@@ -389,6 +389,10 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 
 ---
 
+### Added in 0.6: canvas selection [mac verified]
+
+`knime_selection` (MCP) and `desktop.selection` (native, read-only) return the nodes, annotations and connections selected on the active workflow tab, with node names, factories, states and native IDs. KNIME keeps canvas selection only in its browser UI, so `SelectionAccess` runs one constant script through `ChromiumBrowser.executeJavaScript` and reads the result back from session storage under a one-off key; no agent input reaches the script. Verified on macOS against KNIME 5.12.0 (`org.knime.ui.java 5.12.0.v202606150722`): empty selection, two nodes selected through the store, one node selected by a real mouse click, no leftover storage keys, about 0.17 s per CLI call. Not yet verified on Windows or inside components/metanodes.
+
 ## 4. KNIME version policy
 
 Decided (D3):
@@ -426,6 +430,7 @@ Decided (D3):
 | R15 | GUI-dependent smoke tests cannot run on hosted CI | Medium | Medium | Compile-level CI only; live tests manual per section 4 (D11) | M7 |
 | R16 | Users' real workspaces get modified by an agent once writes are on | High (on by default since D4 changed) | High | Either switch turns writes off without restart; context/revision guards; native undo for graph edits; install guide explains the switches | M3, M4 |
 | R17 | zod 3 advisory GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized constrained collections); fix requires zod 4, a breaking change to every tool schema | Low: inputs come only from the local MCP host | Medium | Migrate to zod 4 before a public release |
+| R18 | `knime_selection` reads KNIME's internal Pinia `selection` and `workflow` stores through a fixed script in the editor browser; a KNIME UI release can rename them | Medium per KNIME release | Low (the tool reports `available:false`, nothing else depends on it) | Re-check on every KNIME bump (section 4); the result names `knimeUiVersion` |
 
 ## 6. Decisions (all made 2026-10-31)
 

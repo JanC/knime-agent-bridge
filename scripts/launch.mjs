@@ -112,6 +112,12 @@ export function knimeExecutable(knime, platform = process.platform) {
   return path.join(knime, 'knime');
 }
 
+// KNIME_AGENT_LAUNCH_VMARGS: extra JVM arguments for developer launches, separated by spaces
+// (for example -Dchromium.remote_debugging_port=9222 to inspect the UI with DevTools).
+export function extraVmArgs(env = process.env) {
+  return (env.KNIME_AGENT_LAUNCH_VMARGS ?? '').split(/\s+/).filter(Boolean);
+}
+
 export async function launchKnime({ argv = process.argv.slice(2), env = process.env, spawnProcess = spawn, platform = process.platform } = {}) {
   const knime = findKnimeHome(env);
   if (!knime) throw new Error('No KNIME installation found. Set KNIME_HOME to the folder that contains knime.ini.');
@@ -127,7 +133,8 @@ export async function launchKnime({ argv = process.argv.slice(2), env = process.
     await fs.mkdir(workspace, { recursive: true });
     const originalConfig = await fs.readFile(path.join(knime, 'configuration', 'config.ini'), 'utf8');
     const originalBundles = await fs.readFile(path.join(knime, 'configuration', 'org.eclipse.equinox.simpleconfigurator', 'bundles.info'), 'utf8');
-    const lines = originalBundles.split(/\r?\n/).filter(Boolean).map(line => {
+    // An installed copy of the extension would clash with the developer JAR (singleton bundle).
+    const lines = originalBundles.split(/\r?\n/).filter(Boolean).filter(line => !line.startsWith(BUNDLE_ID + ',')).map(line => {
       if (line.startsWith('#')) return line;
       const fields = line.split(',');
       if (!fields[2].startsWith('file:')) fields[2] = pathToFileURL(path.resolve(knime, fields[2])).href;
@@ -164,7 +171,7 @@ export async function launchKnime({ argv = process.argv.slice(2), env = process.
     const log = await fs.open(logPath, 'a');
     let child;
     try {
-      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime, '-Dknime.agent.allowWrites=true'];
+      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime, '-Dknime.agent.allowWrites=true', ...extraVmArgs(env)];
       child = spawnProcess(knimeExecutable(knime, platform), launchArgs, { cwd: knime, detached: true, windowsHide: true, stdio: ['ignore', log.fd, log.fd] });
       await new Promise((resolve, reject) => {
         child.once('error', reject);

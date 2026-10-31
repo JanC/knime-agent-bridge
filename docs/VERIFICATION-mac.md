@@ -57,3 +57,7 @@ Run with `KNIME_AGENT_RUNTIME=runtime` and the gates shown. Every test listed pa
 | Preferences > KNIME > Agent Bridge | Present; agent reported changes off when unticked (user) |
 | `.mcpb` double-click install in Claude Desktop 4.29.0 | Pass (user). Claude Desktop log: "Using built-in Node.js for MCP server"; exact Node version not reported |
 | Bundle server read and refused write (`KNIME_AGENT_ALLOW_WRITES=false`) | Pass, run from the unpacked bundle |
+
+## Canvas selection (0.6)
+
+Test KNIME on `runtime/workspace-selection`, developer JAR, DevTools port only to drive clicks. `desktop.selection` returned an empty selection, then `root:1`,`root:2` after selecting through the UI store, then `root:1` after a real mouse click on the canvas. `knime_selection` named them (Table Creator, Column Filter) with native IDs and states. No `knime-agent-selection-*` keys remained in session storage. Not covered: nested workflows, Windows, the installed extension.

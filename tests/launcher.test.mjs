@@ -202,3 +202,21 @@ test('native launcher path follows the platform layout', () => {
   assert.equal(knimeExecutable('/opt/knime', 'linux'), '/opt/knime/knime');
   assert.match(knimeExecutable('C:\\KNIME', 'win32'), /knime\.exe$/);
 });
+
+test('an installed copy of the extension is dropped so only the developer JAR loads', async t => {
+  const f = await fixture(t);
+  await fakeInstallation(f);
+  const info = path.join(f.knime, 'configuration', 'org.eclipse.equinox.simpleconfigurator', 'bundles.info');
+  await fs.writeFile(info, '#version=1\norg.knime.core,5.12.0,plugins/org.knime.core.jar,4,false\nio.github.juniper234.knime.agentbridge,0.6.0.202610311350,plugins/io.github.juniper234.knime.agentbridge_0.6.0.202610311350.jar,4,true\n');
+  let seenArgs;
+  await launchKnime({
+    argv: [], env: { KNIME_HOME: f.knime, KNIME_AGENT_RUNTIME: f.runtime, KNIME_AGENT_LAUNCH_VMARGS: ' -Dchromium.remote_debugging_port=9222 ' }, platform: 'win32',
+    spawnProcess(executable, args) { seenArgs = args; const child = new EventEmitter(); child.pid = process.pid; child.unref = () => {}; queueMicrotask(() => child.emit('spawn')); return child; },
+  });
+  const written = await fs.readFile(path.join(f.runtime, 'configuration', 'org.eclipse.equinox.simpleconfigurator', 'bundles.info'), 'utf8');
+  const bridges = written.split('\n').filter(line => line.startsWith('io.github.juniper234.knime.agentbridge,'));
+  assert.equal(bridges.length, 1);
+  assert.doesNotMatch(bridges[0], /202610311350/);
+  assert.match(written, /^org\.knime\.core,/m);
+  assert.equal(seenArgs.at(-1), '-Dchromium.remote_debugging_port=9222');
+});

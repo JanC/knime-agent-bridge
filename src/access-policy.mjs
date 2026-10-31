@@ -6,7 +6,7 @@ import { BridgeError } from './client.mjs';
 // Only used for bundles older than 0.6.0, which do not publish writePolicy.
 const FALLBACK_READS = ['bridge.diagnostics','canvas.capabilities','canvas.preview','canvas.viewport','context.bind','context.inspect','context.prune','context.release','context.usage',
   'core.describe','core.nodes.details','core.nodes.search','core.port.inspect','core.settings.get','core.settings.preview','core.snapshot','core.table.read',
-  'dependency.inspect','desktop.describe','desktop.functions','desktop.uiState','gateway.describe','health','operation.get'];
+  'dependency.inspect','desktop.describe','desktop.functions','desktop.selection','desktop.uiState','gateway.describe','health','operation.get'];
 const FALLBACK_GATEWAY_READS = ['ApplicationService.getState','NodeRepositoryService.getNodeDescription','NodeRepositoryService.getNodeRepository','NodeRepositoryService.searchNodes',
   'SpaceService.getSpaceItem','SpaceService.getSpaceProviders','SpaceService.getSpaces','SpaceService.listWorkflowGroup',
   'WorkflowService.getNode','WorkflowService.getWorkflow','WorkflowService.getWorkflowBounds','WorkflowService.getWorkflowInfo','WorkflowService.getWorkflowMonitorState','WorkflowService.getWorkflowPortInfo'];
