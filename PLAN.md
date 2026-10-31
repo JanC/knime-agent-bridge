@@ -106,7 +106,9 @@ Runtime contract after the change:
 - IPC protocol: unchanged. One additive field in `session.json`: `writePolicy: {enabled: bool, source: "preference"|"system-property", readOperations: [...], gatewayReadMethods: [...]}`.
 - MCP tool contracts: unchanged names and schemas. One additive error code `WRITES_DISABLED` with `nativeDispatch: "not_started"` and a `suggestedReadOnlyNextCall`. This is the only contract change and is required by goal 3.
 
-### Read-only design (D4 decided; D5 open)
+### Read-only design (D4, D5 decided)
+
+Read-only means exactly the operations in `OperationPolicy.READS` plus `gateway.call` methods in `GATEWAY_READS` (D5). Everything else is a write, including `desktop.openProject`, `desktop.saveProject`, `desktop.closeProject`, `desktop.dialogAction`, file exports (`core.port.export`, `core.workflow.export`) and any unknown operation. In read-only mode the agent can only inspect workflows the user already has open.
 
 Two layers, both default off:
 
@@ -123,7 +125,7 @@ Each milestone has an exit gate; do not start the next one on the same OS until 
 
 ### M0 Recon and decisions [mac]
 
-Progress 2026-10-31: tasks 1 to 4 done, see `docs/PLATFORM_NOTES.md`. KNIME 5.12.0 at `/Applications/KNIME 5.12.0.app`, same KNIME build as the Windows v0.5 verification. JNA `win32` resolves on macOS. Used internal packages are not `x-internal`. Tycho target candidate: `https://update.knime.com/analytics-platform/lts/5.12`. KNIME trusts only `update.knime.com` for p2 content, so our site will trigger a trust prompt (feeds D8). Remaining: API surface doc, LICENSE, Claude Desktop Node version, D5 to D12.
+Progress 2026-10-31: tasks 1 to 4 done, see `docs/PLATFORM_NOTES.md`. KNIME 5.12.0 at `/Applications/KNIME 5.12.0.app`, same KNIME build as the Windows v0.5 verification. JNA `win32` resolves on macOS. Used internal packages are not `x-internal`. Tycho target candidate: `https://update.knime.com/analytics-platform/lts/5.12`. KNIME trusts only `update.knime.com` for p2 content, so our site will trigger a trust prompt (feeds D8). All decisions made. Remaining: API surface doc, LICENSE, Claude Desktop Node version (Claude Desktop 4.29.0 on Electron 44.9.3; check with a probe `.mcpb` early in M4).
 
 **Changes**
 
@@ -146,7 +148,7 @@ Progress 2026-10-31: tasks 1 to 4 done, see `docs/PLATFORM_NOTES.md`. KNIME 5.12
 - [ ] macOS KNIME paths recorded with screenshots of the About and Installation Details dialogs.
 - [ ] JNA question answered with evidence (bundle file name and its `Export-Package`).
 - [ ] `LICENSE` (GPL-3.0) committed. Publishing in M3, M4 and M7 is blocked until it is.
-- [ ] Remaining decisions D5 to D12 answered.
+- [x] Decisions D1 to D12 answered (2026-10-31).
 
 **Risks / open questions**: KNIME may not publish a stable per-release p2 URL that contains `org.knime.ui.java` and the gateway bundles. Fallback is a Tycho "Directory" target location pointing at an installed KNIME's `plugins/` folder (works on both OSes, but CI must download KNIME).
 
@@ -220,17 +222,18 @@ Use the existing launcher path (adapted for macOS) to isolate "does the code run
 - `bundles/<bundle-id>/plugin.xml`: preference page (`org.eclipse.ui.preferencePages`, category = KNIME's root page ID confirmed in M0) and preference initializer. Writes default to off.
 - `BridgeActivator`: read the preference on each dispatch (cheap); add `WRITES_DISABLED`; publish `writePolicy` in `session.json`.
 - `features/<feature-id>/feature.xml`: name, provider, license text (D1), description, `requires` on the KNIME feature range.
-- `releng/update-site/category.xml`, `pom.xml` module: produces `target/repository/` and a zipped archive `<name>-update-site-<version>.zip`.
-- Optional (D8): JAR signing in the Tycho build.
+- `releng/update-site/category.xml`, `pom.xml` module: produces `target/repository/` and a zipped archive `<name>-update-site-<version>.zip`. The zip is the only distribution format (D6); no hosted site.
+- No signing (D8). Users will see p2's unsigned-content prompt; `INSTALL.md` shows it.
 
 **Acceptance**
 
-Install path for each OS is: KNIME > Preferences > Install/Update > Available Software Sites > Add > Archive (the zip) or URL (hosted site), then File > Install KNIME Extensions.
+Install path for each OS is: KNIME > Preferences > Install/Update > Available Software Sites > Add > Archive (the zip), then File > Install KNIME Extensions.
 
 - [ ] [mac] Fresh KNIME 5.12 (new app copy, new workspace, no launcher). Install from the zipped site. Dialog shows the extension under the chosen category with the right name, version and license.
 - [ ] [mac] After the restart prompt, with no other action, `node src/cli.mjs sessions` shows a ready session in `~/.knime-agent/runtime`.
 - [ ] [mac] Preferences > KNIME > Agent Bridge exists; checkbox is off. `health` shows `writePolicy.enabled: false`.
 - [ ] [mac] With writes off, `knime_core_call core.settings.patch` returns `WRITES_DISABLED` with `nativeDispatch: not_started`, and the workflow is unchanged (inspect snapshot before/after).
+- [ ] [mac] With writes off, `desktop.openProject` and `core.workflow.export` are also refused (D5); `core.snapshot`, `core.table.read` and `gateway.call WorkflowService.getWorkflow` succeed.
 - [ ] [mac] Turn the checkbox on (no restart). The same patch succeeds. Turn off again: refused again.
 - [ ] [mac] Uninstall via About > Installation Details > Uninstall. After restart: no session appears, the bundle is gone from the profile (`plugins/` and p2 profile checked), KNIME starts with no errors. Reinstall works.
 - [ ] [mac] Install into a KNIME of an unsupported version (e.g. previous release): behavior matches D3 (either install refused with a clear p2 message, or installs and reports `unsupported` in read-only).
@@ -238,7 +241,7 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - [ ] [win] Repeat install with KNIME in `C:\Program Files\KNIME` (admin install). Record whether elevation is needed.
 - [ ] Automated [both]: `mvn verify` includes a p2 metadata check (feature installable unit present, `p2.inf` instructions in `content.xml`).
 
-**Risks**: p2 "unsigned content" warning confuses non-technical users (D8). KNIME updates may be blocked by a strict version range (D3). Installing into a signed macOS `.app` may break its signature.
+**Risks**: p2 "unsigned content" warning confuses non-technical users (no signing per D8; mitigate with the install guide). KNIME updates may be blocked by a strict version range (D3). Installing into a signed macOS `.app` may break its signature.
 
 ---
 
@@ -249,7 +252,7 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - `packaging/mcpb/manifest.json` (MCPB manifest, version set at M4 start, check against `mcpb validate`):
   - `server.type: "node"`, `entry_point: "server/src/server.mjs"`, `mcp_config.command: "node"`, args `["${__dirname}/server/src/server.mjs", "--runtime", "${user_config.runtime_dir}"]`.
   - `env`: `KNIME_AGENT_ALLOW_WRITES=${user_config.allow_writes}`, `KNIME_AGENT_CANVAS=${user_config.enable_canvas}`, `KNIME_AGENT_BROWSER=${user_config.browser_path}`.
-  - `user_config`: `allow_writes` (boolean, default false), `enable_canvas` (boolean, default false or true per D10), `runtime_dir` (directory, default `${HOME}/.knime-agent/runtime`), `browser_path` (file, optional).
+  - `user_config`: `allow_writes` (boolean, default false), `enable_canvas` (boolean, default false per D10), `runtime_dir` (directory, default `${HOME}/.knime-agent/runtime`), `browser_path` (file, optional).
   - `compatibility.platforms: ["win32","darwin"]`, `compatibility.runtimes.node: ">=22"`.
   - `tools`: the 25 tool names and one-line descriptions, generated from `src/catalog.mjs` + `src/v02-tools.mjs` by the build script so it cannot drift.
   - `license`, `author`, `repository`, `icon`.
@@ -258,6 +261,7 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - `src/catalog.mjs`: call the gate in `dispatchTool` for `knime_core_call`, `knime_gateway_call`, `knime_desktop_call`, `knime_layout_apply`, `knime_verify_workflow` (if it mutates; confirm in M4), returning `WRITES_DISABLED`.
 - `src/canvas/render.mjs`: honor `KNIME_AGENT_CANVAS=false` by returning a structured "disabled by setting" omission without loading Playwright.
 - `src/server.mjs` instructions: mention read-only state and how the user enables writes (both switches).
+- Client registration (D9: Codex and Claude). Claude Desktop uses the `.mcpb`. Keep `scripts/register-codex.mjs` and add `scripts/register-claude-code.mjs` (same pattern, `claude mcp add`), both pointing at `~/.knime-agent/runtime` and passing `KNIME_AGENT_ALLOW_WRITES` explicitly. These are for developers; non-technical users only use the `.mcpb`.
 - Playwright: ship `playwright-core` only (no browser download). Size budget for the `.mcpb`: under 15 MB; record actual size.
 
 **Acceptance**
@@ -270,6 +274,7 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - [ ] [mac] Enable `allow_writes` in Claude Desktop only: still refused by KNIME (Java gate). Enable the KNIME preference too: write succeeds.
 - [ ] [mac] Canvas off: `knime_canvas_view` returns the disabled omission, no browser process starts. Canvas on with Chrome: image returned.
 - [ ] [mac] Disable and remove the extension in Claude Desktop: no leftover Node process; `~/.knime-agent/runtime` untouched.
+- [ ] [both] `register-codex.mjs` and `register-claude-code.mjs` register the server; a fresh Codex chat and a fresh Claude Code session each list the tools and get `WRITES_DISABLED` on a write by default.
 - [ ] [win] Repeat on Windows 11 with no Node.js installed at all (check `where node` fails).
 - [ ] Automated [both]: unit tests for `access-policy.mjs` (every operation in `OperationPolicy.READS` allowed, every core/desktop/gateway write refused, unknown gateway method refused); test that the generated manifest tool list equals `toolCatalog` names; MCP stdio test that runs the staged `build/mcpb/server` with `KNIME_AGENT_ALLOW_WRITES=false`.
 
@@ -321,7 +326,7 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 - [ ] Paths with spaces and non-ASCII: Windows user name with a space (e.g. `Jane Doe`), workspace under `C:\Users\Jane Doe\KNIME workspace\`, KNIME under `C:\Program Files\KNIME`. Sessions, IPC, export and save all work.
 - [ ] OneDrive-redirected Documents folder as workspace: works or is documented as unsupported.
 - [ ] Uninstall both parts; nothing left running; KNIME still starts.
-- [ ] Code-signing decision recorded (D8) with the observed prompts as evidence.
+- [ ] Every unsigned-content, SmartScreen and Defender prompt captured as a screenshot for `INSTALL.md` (no signing per D8).
 
 **Risks**: per-user vs admin KNIME install changes whether extension install needs elevation. Corporate Defender or AppLocker policies can block Node child processes started by Claude Desktop; document, do not work around.
 
@@ -332,9 +337,9 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 **Changes**
 
 - `.github/workflows/build.yml`: matrix `macos-14` (arm64) and `windows-2022`. Steps: `mvn -B verify`, `npm ci`, `npm run test:unit`, `node scripts/build-mcpb.mjs`. Upload update-site zip, `.mcpb`, SHA-256 files as artifacts. Fail if the two OS builds produce different bundle JAR hashes.
-- `.github/workflows/release.yml`: on tag `v*`, attach artifacts to the GitHub release and publish the p2 site to GitHub Pages under `/updates/<minor>/` (stable URL per bridge minor version). Optional signing step (D8).
+- `.github/workflows/release.yml`: on tag `v*`, build the update-site zip, `.mcpb` and SHA-256 files and keep them as workflow artifacts. No publishing and no signing (D6, D8); you ship the files yourself.
 - `.github/workflows/knime-compat.yml`: scheduled weekly and manual. Rebuild against the newest KNIME target (compile-level check) and run `scripts/api-surface.mjs` diff. Opens an issue on failure. See policy below.
-- `docs/INSTALL.md`: one page, screenshots for Windows (primary) and macOS, written for non-technical users. Covers: download, add site, install, restart, Claude Desktop double-click, enabling writes, uninstall.
+- `docs/INSTALL.md`: one page, screenshots for Windows (primary) and macOS, written for non-technical users. Covers: adding the zip as an archive site, the unsigned-content prompt, install, restart, Claude Desktop double-click, enabling writes, updating to a newer zip, uninstall. Short developer section for Codex and Claude Code registration.
 - `docs/COMPATIBILITY.md`: table of bridge version x KNIME version x OS x verification status (verified, compile-only, unsupported) with links to verification receipts.
 - `README.md`: new "Install" section pointing at `docs/INSTALL.md`; current launcher steps move to "Developer setup".
 - `docs/VERIFICATION.md`: exact supported builds, verified operations, untested gaps (required by `AGENTS.md` before a release claim).
@@ -344,8 +349,8 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 
 - [ ] [both] CI green on both runners from a clean tag; artifacts downloadable.
 - [ ] [both] Bundle JAR SHA-256 identical across the two runners.
-- [ ] [mac] Install from the GitHub Pages update-site URL (not the zip) into fresh KNIME.
-- [ ] [win] Same on Windows; then update from the previous bridge version via Help > Check for Updates.
+- [ ] [mac] Install the CI-built update-site zip (not a local build) into fresh KNIME.
+- [ ] [win] Same on Windows; then upgrade from the previous bridge version by adding the newer zip and installing it over the old one. The old version is replaced, not duplicated.
 - [ ] [win] A second person (or you, following only `INSTALL.md` on a clean account) completes install in under 15 minutes without a terminal.
 - [ ] `COMPATIBILITY.md` lists only builds with a verification receipt as "verified".
 
@@ -374,7 +379,7 @@ Decided (D3):
 | R3 | Tycho cannot resolve KNIME internal bundles from public p2 sites, or rejects internal package access | Medium | Medium | Directory target against installed KNIME; keep legacy javac compile | M1 |
 | R4 | p2-installed bundle does not auto-start | Medium | High | `p2.inf` markStarted/startLevel; fallback `org.eclipse.ui.startup` + lazy activation | M3 |
 | R5 | Strict version range blocks users from updating KNIME | High if strict | High | Loose range + runtime gate (D3) | M3 |
-| R6 | Unsigned-content warning, SmartScreen or Defender scare non-technical users | High | Medium | Install guide screenshots; signing (D8) | M6 |
+| R6 | Unsigned-content warning, SmartScreen or Defender scare non-technical users | High | Medium | Install guide screenshots; no signing (D8), revisit if users get stuck | M6 |
 | R7 | Claude Desktop's bundled Node is older than 22 | Low to medium | High | Check in M0; lower `engines` if features allow, or ship a Node binary (`server.type: binary`) | M0, M4 |
 | R8 | Node and Java disagree on runtime dir or write classification | Medium | Medium | Same default dir; Node reads `writePolicy` from `session.json` | M1, M4 |
 | R9 | Read-only gate misses a mutating gateway method | Low | High | Gateway calls not in `GATEWAY_READS` are already writes; unknown ops default to write | M3 |
@@ -386,22 +391,22 @@ Decided (D3):
 | R15 | GUI-dependent smoke tests cannot run on hosted CI | Medium | Medium | Compile-level CI only; live tests manual per section 4 (D11) | M7 |
 | R16 | Users' real workspaces get modified by an agent once writes are on | Medium | High | Default off in two places; context/revision guards; install guide warns to save first | M3, M4 |
 
-## 6. Decisions I need from you
+## 6. Decisions (all made 2026-10-31)
 
-| ID | Decision | Options | My recommendation |
+| ID | Decision | Outcome | |
 |---|---|---|---|
 | D1 | License | **Decided 2026-10-31: GPL-3.0** for the whole repo. Add `LICENSE` in M0; feature license text and `.mcpb` `license` field use it. | |
 | D2 | Bundle and package namespace | **Decided 2026-10-31: rename bundle symbolic name and feature ID only** (e.g. `io.github.<owner>.knime.agentbridge`, exact ID to confirm in M1). Java package `org.knime.agent` stays. Breaks v0.5 named profiles; add a migration note. | |
 | D3 | KNIME version pinning | **Decided 2026-10-31: loose range `[5.12,6.0)` + runtime gate** (section 4). | |
 | D4 | Where the write opt-in lives | **Decided 2026-10-31: both required** (KNIME preference enforced in Java, plus Claude Desktop setting). | |
-| D5 | What read-only allows | Strict (only `OperationPolicy.READS`); also allow `desktop.openProject`; also allow file exports (`core.port.export`, `core.workflow.export`) | Allow `desktop.openProject` (agent cannot inspect a workflow that is not open, and opening does not change it). Keep save, close, exports, execute, reset, settings patch and all gateway writes blocked. |
-| D6 | KNIME distribution channel | Zipped p2 site in GitHub releases; hosted p2 site on GitHub Pages; KNIME Community Hub listing | Both zip and GitHub Pages site for 0.6. Hub listing later (needs D1, D2 and KNIME review). |
-| D7 | Legacy launcher and default runtime dir | Keep launcher as developer path; remove it | Keep `launch.mjs` and the CLI for developers. Change the Node default to `~/.knime-agent/runtime`; launcher keeps its explicit `<repo>/runtime` and passes it to both sides. Drop `Launch KNIME Agent.cmd` from user docs. |
-| D8 | Code signing | None; JAR signing with a code-signing cert; PGP signing of p2 artifacts; `mcpb sign` | Start with none plus checksums for 0.6, decide after M6 shows how bad the prompts are. A Windows code-signing certificate costs money yearly; you decide on spend. |
-| D9 | Codex and other clients | Keep `register-codex.mjs`; generalize to a "copy this JSON" doc; drop | Keep it for developers, add a generic stdio JSON snippet in the docs using the same `~/.knime-agent/runtime`. |
-| D10 | Canvas in the `.mcpb` | On by default; off by default; drop Playwright from the bundle | Off by default for 0.6 (fewer moving parts, no browser process). Easy toggle. |
-| D11 | Live KNIME tests in CI | Manual only; self-hosted Windows runner with KNIME; hosted runner that downloads KNIME | Manual per release at first. Revisit a self-hosted Windows runner if bumps become frequent. |
-| D12 | macOS status | Developer-only; officially supported | Developer-only in 0.6. The `.mcpb` will still list `darwin` because it works, but `COMPATIBILITY.md` marks macOS as unverified for end users. |
+| D5 | What read-only allows | **Decided 2026-10-31: strict.** Only `OperationPolicy.READS` and `GATEWAY_READS`. No `desktop.openProject`, no exports. | |
+| D6 | KNIME distribution channel | **Decided 2026-10-31: build the packages only** (update-site zip and `.mcpb`). You ship them yourself. No GitHub Pages site, no Hub listing for now. | |
+| D7 | Legacy launcher and default runtime dir | **Decided 2026-10-31: leave the launcher** as the developer path. Node default moves to `~/.knime-agent/runtime`; the launcher keeps passing its own runtime explicitly. | |
+| D8 | Code signing | **Decided 2026-10-31: no signing.** SHA-256 checksums only. | |
+| D9 | Other clients | **Decided 2026-10-31: Codex and Claude.** Claude Desktop via `.mcpb`; Codex and Claude Code via registration scripts. No generic client docs. | |
+| D10 | Canvas in the `.mcpb` | **Decided 2026-10-31: off by default**, toggle in extension settings. | |
+| D11 | Live KNIME tests in CI | **Decided 2026-10-31: manual per release.** | |
+| D12 | macOS status | **Decided 2026-10-31: developer-only** in 0.6; `.mcpb` still lists `darwin`, `COMPATIBILITY.md` marks it unverified. | |
 
 ## 7. Order and human steps
 
@@ -409,13 +414,13 @@ An agent can do the code, build and scripted checks. Progress is gated by the st
 
 | Milestone | Where | Needs you for |
 |---|---|---|
-| M0 Recon | mac | Decisions D5 to D12 |
+| M0 Recon | mac | Nothing left (all decisions made) |
 | M1 Cross-platform build | both | Running the build and unit tests on the Windows machine |
 | M2 Bundle on macOS | mac | Approving KNIME launches; dismissing first-run dialogs |
 | M3 KNIME extension | mac, then win | Clicking through the Install Extensions dialog, restart and uninstall on each OS |
 | M4 `.mcpb` | mac, then win | Double-click install in Claude Desktop; toggling settings; a Windows box with no Node |
 | M5 Functional pass | mac | Driving Claude Desktop chats; reviewing the canvas image |
 | M6 Windows acceptance | win | The whole milestone (clean account, SmartScreen/Defender prompts, screenshots) |
-| M7 Release | both | Repo settings (Actions, Pages), tagging, any signing spend (D8) |
+| M7 Release | both | Enabling Actions, tagging, shipping the built files (D6) |
 
 Critical path: committing the GPL-3.0 `LICENSE` gates publishing in M3, M4 and M7. M1 Tycho resolution (R3) is the largest technical unknown; do it first in M1, before anything else.
