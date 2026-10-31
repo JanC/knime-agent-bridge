@@ -309,6 +309,8 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - [ ] [win] Repeat on Windows 11 with no Node.js installed at all (check `where node` fails).
 - [ ] Automated [both]: unit tests for `access-policy.mjs` (every operation in `OperationPolicy.READS` allowed, every core/desktop/gateway write refused, unknown gateway method refused); test that the generated manifest tool list equals `toolCatalog` names; MCP stdio test that runs the staged `build/mcpb/server` with `KNIME_AGENT_ALLOW_WRITES=false`.
 
+**Progress (2026-10-31, mac)**: `npm run build:mcpb` produces `artifacts/knime-agent-bridge-0.6.0.mcpb` (5.9 MB packed, 21 MB unpacked, 2296 files) with the pinned `@anthropic-ai/mcpb` 2.1.2; `mcpb validate` passes and the manifest's tool list is generated from `toolCatalog` (25 tools). The server unpacked from the bundle lists 25 tools, reads health from the M3-installed extension and refuses a write with `WRITES_DISABLED` (`nativeDispatch: not_started`) when `KNIME_AGENT_ALLOW_WRITES=false`. Changes from the plan: the client gate lives in `BridgeClient.call` (covers every tool, including layout apply), `allow_writes` defaults to on (D4 changed), there is no `runtime_dir` setting (the server default `~/.knime-agent/runtime` matches the extension), and the entry point is `src/server.mjs` at the bundle root. MCP SDK updated to 1.32.2 for published advisories; zod 3 still has a memory-exhaustion advisory whose fix is the breaking zod 4 (R17). Still open: the double-click install in Claude Desktop, its bundled Node version, and the toggles in its UI.
+
 **Risks**: Claude Desktop's bundled Node version may be below 22 (check in M0). `powershell.exe` spawn from `lifecycle.mjs` may be slow or blocked under Claude Desktop on locked-down Windows; the code already degrades to `creationIdentity: null`, so verify that path.
 
 ---
@@ -422,7 +424,8 @@ Decided (D3):
 | R13 | `org.knime.*` namespace causes confusion or a collision | Medium | Medium | Rename symbolic name (D2) | M1 |
 | R14 | Changing default runtime dir breaks existing launcher users and named profiles | High for existing users | Low | Launcher keeps passing explicit runtime; migration note (D7) | M1 |
 | R15 | GUI-dependent smoke tests cannot run on hosted CI | Medium | Medium | Compile-level CI only; live tests manual per section 4 (D11) | M7 |
-| R16 | Users' real workspaces get modified by an agent once writes are on | Medium | High | Default off in two places; context/revision guards; install guide warns to save first | M3, M4 |
+| R16 | Users' real workspaces get modified by an agent once writes are on | High (on by default since D4 changed) | High | Either switch turns writes off without restart; context/revision guards; native undo for graph edits; install guide explains the switches | M3, M4 |
+| R17 | zod 3 advisory GHSA-mrhx-c7xc-m3w5 (memory exhaustion on oversized constrained collections); fix requires zod 4, a breaking change to every tool schema | Low: inputs come only from the local MCP host | Medium | Migrate to zod 4 before a public release |
 
 ## 6. Decisions (all made 2026-10-31)
 

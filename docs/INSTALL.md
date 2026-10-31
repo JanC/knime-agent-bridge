@@ -20,6 +20,29 @@ node src/cli.mjs sessions
 
 **Preferences** > **KNIME** > **Agent Bridge** has one option: "Allow AI agents to modify, execute and save workflows". It is **on** by default. Turn it off to make every connected agent read-only: agents can still see open workflows, settings, tables and the canvas, and any change is refused with `WRITES_DISABLED` before it reaches KNIME. The setting applies immediately, without a restart.
 
+## Connecting Claude Desktop
+
+Build the bundle with `npm run build:mcpb` (output: `artifacts/knime-agent-bridge-<version>.mcpb`, about 6 MB). Double-click it, or drag it onto Claude Desktop's **Settings > Extensions** page, and click **Install**. Claude Desktop runs it with its own built-in Node.js; nothing else needs installing.
+
+The extension has three settings:
+
+- **Allow changes** (on): turn off to keep Claude read-only. KNIME's own switch (below) must also allow changes.
+- **Canvas images** (off): lets Claude render pictures of the workflow. Needs Google Chrome or Microsoft Edge.
+- **Browser for canvas images** (empty): a Chrome, Edge or Chromium executable if neither is found automatically.
+
+KNIME must be running with the extension installed; otherwise the tools report that no KNIME session is available.
+
+## Connecting Claude Code or Codex
+
+From a checkout of this repository:
+
+```
+node scripts/register-claude-code.mjs
+node scripts/register-codex.mjs
+```
+
+Add `--read-only` to either to register the server with changes turned off.
+
 ## Uninstall
 
 **Menu** > **Help** > **About KNIME Analytics Platform** > **Installation Details**, select **KNIME Agent Bridge**, **Uninstall...**, then restart. KNIME stops loading the bridge at once; p2 removes the JAR from `plugins/` during a later cleanup.

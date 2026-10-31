@@ -209,6 +209,7 @@ export function errorPayload(error) {
     /CONTEXT|REVISION/.test(payload.code)?{tool:'knime_context',arguments:{action:'inspect',contextId:'<existing bound context>'}}:
     /SESSION|RUNTIME|PROFILE|COMPATIBILITY/.test(payload.code)?{tool:'knime_connection',arguments:{detail:true}}:
     payload.code==='STALE_HISTORY_CURSOR'?{tool:'knime_history',arguments:{action:'page'}}:
+    payload.code==='WRITES_DISABLED'?{tool:'knime_health',arguments:{}}:
     payload.code==='INVALID_ARGUMENT'?{tool:'knime_core_call',arguments:{operation:'core.describe',args:{}}}:null;
   return {error:{...payload,...(next?{suggestedReadOnlyNextCall:next}:{})}};
 }

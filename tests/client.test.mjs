@@ -225,3 +225,14 @@ test('CLI rejects mixed argument formats and invalid JSON without creating a req
   }
   assert.equal(f.requests.length, 0);
 });
+
+test('client write switch refuses a mutation without queueing a request and still allows reads', async t => {
+  const writePolicy = { enabled: true, source: 'preference', readOperations: ['core.snapshot'], gatewayReadMethods: [] };
+  const f = await fixture(t, { overrides: { writePolicy }, respond: request => ({ id: request.id, ok: true, result: { read: true } }) });
+  const client = new BridgeClient({ runtime: f.runtime, pollMs: 5, timeoutMs: 500, allowWrites: false });
+  await assert.rejects(client.call('core.settings.patch', { projectId: 'p', nodeId: 'n', patches: [] }), error => error.code === 'WRITES_DISABLED' && error.details.nativeDispatch === 'not_started');
+  assert.deepEqual(await client.call('core.snapshot', {}), { read: true });
+  assert.deepEqual(f.requests.map(r => r.operation), ['core.snapshot']);
+  const connection = await client.connectionDiagnostics();
+  assert.deepEqual(connection.writes, { allowed: false, client: { enabled: false, source: 'KNIME_AGENT_ALLOW_WRITES' }, knime: { enabled: true, source: 'preference' } });
+});
