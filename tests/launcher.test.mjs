@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { launchKnime } from '../scripts/launch.mjs';
+import { knimeExecutable, launchKnime } from '../scripts/launch.mjs';
 
 const script = fileURLToPath(new URL('../scripts/launch.mjs', import.meta.url));
 const preferencePath = workspace => path.join(workspace, '.metadata', '.plugins', 'org.eclipse.core.runtime', '.settings', 'org.knime.workbench.core.prefs');
@@ -146,9 +146,10 @@ test('successful spawn holds the lock until its pid is published, then later lau
   let signalSpawn, pendingChild;
   const reachedSpawn = new Promise(resolve => { signalSpawn = resolve; });
   const pendingLaunch = launchKnime({
-    argv: [], env: { KNIME_HOME: f.knime, KNIME_AGENT_RUNTIME: f.runtime },
+    argv: [], env: { KNIME_HOME: f.knime, KNIME_AGENT_RUNTIME: f.runtime }, platform: 'win32',
     spawnProcess(executable, args, options) {
       assert.equal(executable, path.join(f.knime, 'knime.exe'));
+      assert.ok(args.includes('-Dknime.agent.allowWrites=true'));
       assert.equal(args[args.indexOf('-data') + 1], f.workspace);
       assert.equal(options.windowsHide, true);
       pendingChild = new EventEmitter();
@@ -194,4 +195,10 @@ test('failure to record an already started process retains the guard against ano
   assert.equal(result.code, 1);
   assert.match(result.stderr, /launch preparation.*locked/i);
   assert.deepEqual((await fs.readdir(f.runtime)).filter(name => name.endsWith('.tmp')), []);
+});
+
+test('native launcher path follows the platform layout', () => {
+  assert.equal(knimeExecutable('/Applications/KNIME 5.12.0.app/Contents/Eclipse', 'darwin'), '/Applications/KNIME 5.12.0.app/Contents/MacOS/knime');
+  assert.equal(knimeExecutable('/opt/knime', 'linux'), '/opt/knime/knime');
+  assert.match(knimeExecutable('C:\\KNIME', 'win32'), /knime\.exe$/);
 });

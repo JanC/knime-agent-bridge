@@ -71,6 +71,10 @@ The KNIME bundle qualifiers match the Windows build recorded in `VERIFICATION-0.
 
 The internal packages the bridge uses (`org.knime.gateway.impl.project`, `org.knime.gateway.impl.webui.jsonrpc`, `org.knime.gateway.impl.webui.jsonrpc.service.util`, `org.knime.ui.java.api`) are exported without `x-internal` or `x-friends`. Tycho should compile them without access errors. This lowers risk R3 in PLAN.md.
 
+### Launching for development
+
+`node scripts/launch.mjs` resolves `KNIME_HOME` to `<KNIME app>/Contents/Eclipse` and starts `<KNIME app>/Contents/MacOS/knime` directly (not through `open`), so each launch is a separate process even when another KNIME from the same app is running. The launcher copies every `-vmargs` line from `knime.ini`, which keeps `-XstartOnFirstThread` and the relative `-Xdock:icon`; the working directory is `Contents/Eclipse`, so relative paths resolve. Results are in `VERIFICATION-mac.md`.
+
 ## Windows 11, KNIME 5.12.0
 
 Verified for v0.5 (see `VERIFICATION-0.5.md`). Install-path checks for the extension are pending (M3, M6).

@@ -228,12 +228,14 @@ Use the existing launcher path (adapted for macOS) to isolate "does the code run
 
 **Acceptance [mac]**
 
-- [ ] `node scripts/launch.mjs --workspace runtime/workspace` starts KNIME; the bridge activates (no errors in `runtime/knime.log` for the bundle).
-- [ ] `node src/cli.mjs sessions` lists one session with `status: ready`, `modernUiReady: true`, `knimeVersion` 5.12.x.
-- [ ] `node src/cli.mjs health` succeeds; `bundleFingerprint` equals the SHA-256 of the built JAR.
-- [ ] `desktop.uiState` returns readable shell info on macOS (SWT Cocoa); note any differences in `PLATFORM_NOTES.md`.
-- [ ] `core.workflow.export` on a saved synthetic workflow succeeds on macOS (exercises the non-JNA identity path).
-- [ ] `KNIME_AGENT_LIVE=1 npm run test:live` against the synthetic workspace: record pass/fail per test in `docs/VERIFICATION-mac.md`. Failures are triaged, not necessarily fixed here (Windows remains the release target).
+- [x] `node scripts/launch.mjs --workspace runtime/workspace` starts KNIME; the bridge activates (no errors in `runtime/knime.log` for the bundle).
+- [x] `node src/cli.mjs sessions` lists one session with `status: ready`, `modernUiReady: true`, `knimeVersion` 5.12.x.
+- [x] `node src/cli.mjs health` succeeds; `bundleFingerprint` equals the SHA-256 of the built JAR.
+- [x] `desktop.uiState` returns readable shell info on macOS (SWT Cocoa); note any differences in `PLATFORM_NOTES.md`.
+- [x] `core.workflow.export` on a saved synthetic workflow succeeds on macOS (exercises the non-JNA identity path).
+- [x] `KNIME_AGENT_LIVE=1 npm run test:live` against the synthetic workspace: record pass/fail per test in `docs/VERIFICATION-mac.md`. Failures are triaged, not necessarily fixed here (Windows remains the release target).
+
+**Progress (2026-10-31)**: done on macOS. All 32 live tests pass (there is no `test:live` script; the files and gates are listed in `docs/VERIFICATION-mac.md`). Modern UI was ready about 6 s after launch, native SVG preview and the Equo Chromium viewport capture both work on Cocoa, and workflow export works without JNA. The launcher also passes `-Dknime.agent.allowWrites=true`, which the bridge ignores until M5.
 
 **Risks**: modern UI readiness on macOS (Equo Chromium) may differ; viewport capture (`EditorViewportCapture`) may not work on Cocoa. Acceptable as a documented gap on macOS if Windows works.
 
@@ -433,7 +435,7 @@ Decided (D3):
 | D9 | Other clients | **Decided 2026-10-31: Codex and Claude.** Claude Desktop via `.mcpb`; Codex and Claude Code via registration scripts. No generic client docs. | |
 | D10 | Canvas in the `.mcpb` | **Decided 2026-10-31: off by default**, toggle in extension settings. | |
 | D11 | Live KNIME tests in CI | **Decided 2026-10-31: manual per release.** | |
-| D12 | macOS status | **Decided 2026-10-31: developer-only** in 0.6; `.mcpb` still lists `darwin`, `COMPATIBILITY.md` marks it unverified. | |
+| D12 | macOS status | **Changed 2026-10-31: macOS first.** The user wants a working macOS install (M3 to M5 on mac) before the Windows work (M6). Windows stays the release target. | |
 
 ## 7. Order and human steps
 
@@ -444,10 +446,12 @@ An agent can do the code, build and scripted checks. Progress is gated by the st
 | M0 Recon | mac | Nothing left (all decisions made) |
 | M1 Cross-platform build | both | Running the build and unit tests on the Windows machine |
 | M2 Bundle on macOS | mac | Approving KNIME launches; dismissing first-run dialogs |
-| M3 KNIME extension | mac, then win | Clicking through the Install Extensions dialog, restart and uninstall on each OS |
-| M4 `.mcpb` | mac, then win | Double-click install in Claude Desktop; toggling settings; a Windows box with no Node |
+| M3 KNIME extension | mac now, win later | Clicking through the Install Extensions dialog, restart and uninstall on each OS |
+| M4 `.mcpb` | mac now, win later | Double-click install in Claude Desktop; toggling settings; a Windows box with no Node |
 | M5 Functional pass | mac | Driving Claude Desktop chats; reviewing the canvas image |
 | M6 Windows acceptance | win | The whole milestone (clean account, SmartScreen/Defender prompts, screenshots) |
 | M7 Release | both | Enabling Actions, tagging, shipping the built files (D6) |
+
+Order (D12, changed 2026-10-31): finish M3, M4 and M5 on macOS first so there is a working result to try, then do the Windows halves of M1, M3 and M4 together with M6.
 
 Critical path: committing the GPL-3.0 `LICENSE` gates publishing in M3, M4 and M7. M1 Tycho resolution (R3) is the largest technical unknown; do it first in M1, before anything else.

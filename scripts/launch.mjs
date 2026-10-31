@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { BridgeClient } from '../src/client.mjs';
-import { BUNDLE_ID } from './lib/java-toolchain.mjs';
+import { BUNDLE_ID, findKnimeHome } from './lib/java-toolchain.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -104,8 +104,17 @@ export async function seedModernUi(config) {
   await fs.writeFile(file,preferences);
 }
 
-export async function launchKnime({ argv = process.argv.slice(2), env = process.env, spawnProcess = spawn } = {}) {
-  const knime = env.KNIME_HOME || path.join(env.LOCALAPPDATA, 'Programs', 'KNIME');
+// KNIME_HOME is the folder holding knime.ini, plugins and configuration. On macOS that is
+// KNIME.app/Contents/Eclipse and the native launcher sits next to it in Contents/MacOS.
+export function knimeExecutable(knime, platform = process.platform) {
+  if (platform === 'win32') return path.join(knime, 'knime.exe');
+  if (platform === 'darwin') return path.resolve(knime, '..', 'MacOS', 'knime');
+  return path.join(knime, 'knime');
+}
+
+export async function launchKnime({ argv = process.argv.slice(2), env = process.env, spawnProcess = spawn, platform = process.platform } = {}) {
+  const knime = findKnimeHome(env);
+  if (!knime) throw new Error('No KNIME installation found. Set KNIME_HOME to the folder that contains knime.ini.');
   const runtime = path.resolve(env.KNIME_AGENT_RUNTIME || path.join(root, 'runtime'));
   const workspace = parseWorkspace(argv, runtime);
   const release = await acquireRuntimeLock(runtime);
@@ -155,8 +164,8 @@ export async function launchKnime({ argv = process.argv.slice(2), env = process.
     const log = await fs.open(logPath, 'a');
     let child;
     try {
-      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime];
-      child = spawnProcess(path.join(knime, 'knime.exe'), launchArgs, { cwd: knime, detached: true, windowsHide: true, stdio: ['ignore', log.fd, log.fd] });
+      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime, '-Dknime.agent.allowWrites=true'];
+      child = spawnProcess(knimeExecutable(knime, platform), launchArgs, { cwd: knime, detached: true, windowsHide: true, stdio: ['ignore', log.fd, log.fd] });
       await new Promise((resolve, reject) => {
         child.once('error', reject);
         child.once('spawn', resolve);
