@@ -354,8 +354,8 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 - [ ] Follow only `docs/INSTALL.md` (from M7 draft). Time each step; note every dialog with a screenshot.
 - [ ] Download the update-site zip and `.mcpb` with Edge. Record SmartScreen / Mark-of-the-Web prompts for each.
 - [ ] Record Defender behavior (real-time scan of the zip, the JAR, Node child processes). No quarantine.
-- [ ] KNIME install of the extension, restart, preference page present, writes off.
-- [ ] `.mcpb` install by double-click; tools listed; read-only refusal works.
+- [ ] KNIME install of the extension, restart, preference page present, writes on (D4 default).
+- [ ] `.mcpb` install by double-click; tools listed; with Allow changes off, a change is refused.
 - [ ] Enable writes in both places; M5 checklist passes on Windows.
 - [ ] `core.workflow.export` exercises the Kernel32 file identity path (`WindowsFileIdentity`) and returns a manifest; the JNA import resolves.
 - [ ] Canvas with Edge (default on Windows) returns images; with canvas disabled, no Edge process starts.

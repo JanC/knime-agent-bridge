@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "startedAt": "2026-10-31T14:46:31.591Z",
+  "startedAt": "2026-10-31T15:42:32.858Z",
   "platform": "darwin-arm64",
   "os": "27.0.0",
   "node": "v26.10.0",
@@ -8,8 +8,8 @@
   "runtime": "/Users/jan/.knime-agent/runtime",
   "workspace": "/Users/jan/xworkspace/knime-agent-bridge/runtime/workspace-m5",
   "session": {
-    "id": "f44a429e-3b82-459a-af0b-e24d2f845370",
-    "pid": 2874,
+    "id": "87de6640-619a-4674-b37d-051162502ae9",
+    "pid": 10515,
     "knimeVersion": "5.12.0.v202606180846",
     "bundleFingerprint": "6d171c30aabcbefc6c3c4cf1fc1c870923a4c664393c001f5c8d463ad69b8e9c",
     "bridgeVersion": "0.6.0"
@@ -19,7 +19,7 @@
       "name": "connection reports the installed bridge and both write switches",
       "kind": "functional",
       "status": "pass",
-      "ms": 64,
+      "ms": 68,
       "detail": {
         "tools": 26,
         "knimeVersion": "5.12.0.v202606180846",
@@ -33,17 +33,17 @@
       "name": "create and open a synthetic workflow",
       "kind": "functional",
       "status": "pass",
-      "ms": 559,
+      "ms": 839,
       "detail": {
-        "itemName": "M5 Install Check 1793457991782",
-        "projectId": "M5 Install Check 1793457991782_d30f9906-b6d7-4048-92a3-f3420ce01e40"
+        "itemName": "M5 Install Check 1793461353068",
+        "projectId": "M5 Install Check 1793461353068_acfa94f8-3392-4625-b4ea-84d504b5d35f"
       }
     },
     {
       "name": "add, connect and inspect nodes",
       "kind": "functional",
       "status": "pass",
-      "ms": 662,
+      "ms": 610,
       "detail": {
         "nodes": [
           "Table Creator",
@@ -55,7 +55,7 @@
       "name": "preview then apply typed settings, with clean validation",
       "kind": "functional",
       "status": "pass",
-      "ms": 625,
+      "ms": 490,
       "detail": {
         "previewChangedFields": 3,
         "validation": [
@@ -76,16 +76,16 @@
       "name": "execute and wait; no node messages",
       "kind": "functional",
       "status": "pass",
-      "ms": 569,
+      "ms": 699,
       "detail": {
-        "knimeWait": "{\"status\":\"settled\",\"completed\":true,\"condition\":\"execution\",\"sessionId\":\"f44a429e-3b82-459a-af0b-e24d2f845370\",\"attempts\":1,\"elapsedMs\":109,\"observation\":{\"id\":\"6:2\",\"gatewayId\":\"root:2\",\"name\":\"Column Filter\",\"label\":\"6:2 - Column Filter\",\"customName\":null,\"state\":\"EXECUTED\",\"dirty\":true,\"inactive"
+        "knimeWait": "{\"status\":\"settled\",\"completed\":true,\"condition\":\"execution\",\"sessionId\":\"87de6640-619a-4674-b37d-051162502ae9\",\"attempts\":1,\"elapsedMs\":107,\"observation\":{\"id\":\"4:2\",\"gatewayId\":\"root:2\",\"name\":\"Column Filter\",\"label\":\"4:2 - Column Filter\",\"customName\":null,\"state\":\"EXECUTED\",\"dirty\":true,\"inactive"
       }
     },
     {
       "name": "read and verify the output table against independent expectations",
       "kind": "functional",
       "status": "pass",
-      "ms": 237,
+      "ms": 223,
       "detail": {
         "rows": 3,
         "verification": "passed"
@@ -95,7 +95,7 @@
       "name": "canvas overview image (native SVG rendered locally)",
       "kind": "visual",
       "status": "pass",
-      "ms": 1452,
+      "ms": 1245,
       "detail": {
         "images": [
           "runtime/m5-evidence/overview-0.png"
@@ -108,7 +108,7 @@
       "name": "live editor viewport image",
       "kind": "visual",
       "status": "pass",
-      "ms": 449,
+      "ms": 541,
       "detail": {
         "images": [
           "runtime/m5-evidence/viewport-0.png"
@@ -120,7 +120,7 @@
       "name": "selection is readable from the UI",
       "kind": "functional",
       "status": "pass",
-      "ms": 55,
+      "ms": 58,
       "detail": {
         "nodeIds": []
       }
@@ -129,16 +129,21 @@
       "name": "client read-only switch refuses a change and leaves the graph unchanged",
       "kind": "functional",
       "status": "pass",
-      "ms": 419
+      "ms": 440
     },
     {
-      "name": "save, close and reopen; settings and data persist",
+      "name": "save, export, close and reopen; settings and data persist",
       "kind": "persistence",
       "status": "pass",
-      "ms": 1102,
+      "ms": 1346,
       "detail": {
-        "knimeWaitSaved": "{\"status\":\"settled\",\"completed\":true,\"condition\":\"saved\",\"sessionId\":\"f44a429e-3b82-459a-af0b-e24d2f845370\",\"attempts\":1,\"elapsedMs\":109,\"observation\":{\"id\":\"6\",\"gatewayId\":\"root\",\"name\":\"M5 Install Check 1793457991782\",\"label\":\"6 - M5 Install Check 1793457991782\",\"customName\":null,\"state\":\"EXECUTED",
-        "reopenedProjectId": "M5 Install Check 1793457991782_fd7ceb92-3d6d-4ceb-885c-2eb1b1b98cdd"
+        "knimeWaitSaved": "{\"status\":\"settled\",\"completed\":true,\"condition\":\"saved\",\"sessionId\":\"87de6640-619a-4674-b37d-051162502ae9\",\"attempts\":1,\"elapsedMs\":107,\"observation\":{\"id\":\"4\",\"gatewayId\":\"root\",\"name\":\"M5 Install Check 1793461353068\",\"label\":\"4 - M5 Install Check 1793461353068\",\"customName\":null,\"state\":\"EXECUTED",
+        "export": {
+          "entries": 17,
+          "bytes": 54274,
+          "sha256": "6080b718b37a4d61c92c9f2bf67d951fd134d260db77572c69f2400f112ea4fe"
+        },
+        "reopenedProjectId": "M5 Install Check 1793461353068_01748529-96ed-431d-9104-5075ef986e6a"
       }
     }
   ],
@@ -158,7 +163,7 @@
       "live editor viewport image"
     ],
     "persistence": [
-      "save, close and reopen; settings and data persist"
+      "save, export, close and reopen; settings and data persist"
     ]
   },
   "notCovered": [
@@ -167,7 +172,7 @@
     "Selection by mouse click is not driven here (no DevTools port on an installed KNIME).",
     "UI responsiveness is not measured."
   ],
-  "finishedAt": "2026-10-31T14:46:37.986Z",
+  "finishedAt": "2026-10-31T15:42:39.635Z",
   "summary": {
     "pass": 11,
     "fail": 0

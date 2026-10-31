@@ -38,7 +38,7 @@ Reproduce: start KNIME with `-data <repo>/runtime/workspace-m5`, then `node scri
 
 ### Persistence evidence
 
-- `desktop.saveProject` cleared the dirty flag, and `knime_wait` (saved) settled. `desktop.closeProject` removed the project from the application state.
+- `desktop.saveProject` cleared the dirty flag, and `knime_wait` (saved) settled. `core.workflow.export` of the saved project produced a complete manifest (17 entries, `workflow.knime` included, no implicit save), and the archive SHA-256 matched the reported one. `desktop.closeProject` removed the project from the application state.
 - After reopening (new project ID): 2 nodes and 1 connection, the Column Filter setting `EnforceInclusion` is present, the filtered table still reads `[[1],[2],[3]]` without re-executing, and `workflow.knime` exists in the workflow folder on disk.
 
 ### Repository tests (same machine)

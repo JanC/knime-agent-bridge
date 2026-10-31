@@ -17,16 +17,18 @@ import { BridgeClient, defaultRuntimeDirectory } from '../src/client.mjs';
 import { configureTableCreatorFixture, executeAndWaitForNode, tableCreatorFixtureRows } from '../tests/helpers/table-fixture.mjs';
 import { guardedMcp } from '../tests/helpers/guarded-native.mjs';
 
+// Windows paths are case-insensitive; compare them folded.
+const fold = p => process.platform === 'win32' ? p.toLowerCase() : p;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { values } = parseArgs({ options: { workspace: { type: 'string' }, runtime: { type: 'string' }, out: { type: 'string' } } });
 if (!values.workspace) throw new Error('--workspace is required (a synthetic workspace under runtime/).');
 const workspace = await fs.realpath(path.resolve(values.workspace));
 const syntheticRoot = await fs.realpath(path.join(root, 'runtime'));
-if (!workspace.startsWith(syntheticRoot + path.sep)) throw new Error(`Refusing to mutate ${workspace}: it is not inside ${syntheticRoot}.`);
+if (!fold(workspace).startsWith(fold(syntheticRoot + path.sep))) throw new Error(`Refusing to mutate ${workspace}: it is not inside ${syntheticRoot}.`);
 const runtime = path.resolve(values.runtime ?? defaultRuntimeDirectory());
 const version = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8')).version;
 
-const sameDir = (url, dir) => { try { return path.resolve(fileURLToPath(url)).replace(/[\\/]$/, '') === dir; } catch { return false; } };
+const sameDir = (url, dir) => { try { return fold(path.resolve(fileURLToPath(url)).replace(/[\\/]$/, '')) === fold(dir); } catch { return false; } };
 const live = (await new BridgeClient({ runtime }).listSessions()).filter(s => s.alive && sameDir(s.workspace, workspace));
 if (live.length !== 1) throw new Error(`Expected one live session for ${workspace} in ${runtime}; found ${live.length}. Start KNIME with -data ${workspace} first.`);
 const session = live[0];
@@ -182,10 +184,17 @@ try {
     } finally { await readOnly.client.close(); }
   });
 
-  await step('save, close and reopen; settings and data persist', 'persistence', async () => {
+  await step('save, export, close and reopen; settings and data persist', 'persistence', async () => {
     await desktop('desktop.saveProject', { projectId });
     await until(async () => !(await call('knime_workflow', { projectId, depth: 0 })).dirty, 'save did not clear the dirty flag');
     const savedWait = await call('knime_wait', { session: session.id, condition: 'saved', projectId, timeoutMs: 30000 });
+    // Export reads Windows file identities through Kernel32 (JNA) when Java has no fileKey.
+    const exportCtx = await bind(projectId);
+    const exported = await call('knime_core_call', { operation: 'core.workflow.export', args: { projectId, excludeData: false, maxBytes: 16 * 1048576, maxEntries: 2000 }, precondition: { contextId: exportCtx.contextId, expected: exportCtx.revisions ?? {} } });
+    check(exported.manifestComplete === true && exported.savePerformed === false, 'export manifest incomplete: ' + JSON.stringify(exported).slice(0, 300));
+    check(exported.manifest?.some(e => e.name.endsWith('/workflow.knime')), 'export lacks workflow.knime');
+    const { createHash } = await import('node:crypto');
+    check(createHash('sha256').update(await fs.readFile(exported.path)).digest('hex') === exported.sha256, 'export SHA-256 mismatch');
     await desktop('desktop.closeProject', { projectId });
     await until(async () => !(await gateway('ApplicationService.getState')).openProjects.some(p => p.projectId === projectId), 'project did not close');
     await desktop('desktop.openProject', { spaceId: 'local', spaceProviderId: 'local', itemId: item.id });
@@ -198,7 +207,7 @@ try {
     check(JSON.stringify(filtered.rows.map(r => r.values)) === '[[1],[2],[3]]', 'saved table data not restored');
     const onDisk = await fs.readdir(path.join(workspace, itemName));
     check(onDisk.includes('workflow.knime'), 'workflow.knime missing on disk');
-    return { knimeWaitSaved: JSON.stringify(savedWait).slice(0, 300), reopenedProjectId: projectId };
+    return { knimeWaitSaved: JSON.stringify(savedWait).slice(0, 300), export: { entries: exported.manifest.length, bytes: exported.bytes ?? exported.size, sha256: exported.sha256 }, reopenedProjectId: projectId };
   });
 } finally {
   await client.close();
