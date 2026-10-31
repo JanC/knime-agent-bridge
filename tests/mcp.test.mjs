@@ -131,8 +131,8 @@ test('MCP stdio discovery, tools, errors and resources use the real file transpo
     assert.equal(sessions.structuredContent.sessions[0].alive, true);
     const health = await client.callTool({ name: 'knime_health', arguments: {} });
     assert.equal(health.structuredContent.knimeVersion, '5.12.0');
-    assert.equal(JSON.parse(health.content[0].text).detailSource, 'structuredContent');
-    assert.ok(health.content[0].text.length < 2000);
+    // Hosts that drop structuredContent still get the complete payload as text.
+    assert.deepEqual(JSON.parse(health.content[0].text), health.structuredContent);
   });
   await t.test('gateway call transmits positional parameters and preserves nested output', async () => {
     const result = await client.callTool({ name: 'knime_gateway_call', arguments: { method: 'WorkflowService.getWorkflow', params: ['project-42', 'root'] } });
