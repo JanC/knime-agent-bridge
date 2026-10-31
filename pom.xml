@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.github.juniper234.knime.agentbridge</groupId>
+  <artifactId>parent</artifactId>
+  <version>0.6.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>KNIME Agent Bridge</name>
+
+  <licenses>
+    <license><name>GPL-3.0-only</name><url>https://www.gnu.org/licenses/gpl-3.0.txt</url></license>
+  </licenses>
+
+  <properties>
+    <tycho.version>5.0.4</tycho.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Fixed archive entry times; the bundle qualifier comes from the last git commit. -->
+    <project.build.outputTimestamp>2026-01-01T00:00:00Z</project.build.outputTimestamp>
+    <knime.target>knime-5.12</knime.target>
+  </properties>
+
+  <modules>
+    <module>bundles/io.github.juniper234.knime.agentbridge</module>
+  </modules>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-maven-plugin</artifactId>
+        <version>${tycho.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>target-platform-configuration</artifactId>
+        <version>${tycho.version}</version>
+        <configuration>
+          <target>
+            <file>${maven.multiModuleProjectDirectory}/releng/target/${knime.target}.target</file>
+          </target>
+          <environments>
+            <environment><os>win32</os><ws>win32</ws><arch>x86_64</arch></environment>
+            <environment><os>macosx</os><ws>cocoa</ws><arch>aarch64</arch></environment>
+            <environment><os>macosx</os><ws>cocoa</ws><arch>x86_64</arch></environment>
+          </environments>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-packaging-plugin</artifactId>
+        <version>${tycho.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.eclipse.tycho</groupId>
+            <artifactId>tycho-buildtimestamp-jgit</artifactId>
+            <version>${tycho.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <timestampProvider>jgit</timestampProvider>
+          <jgit.ignore>pom.xml</jgit.ignore>
+          <jgit.dirtyWorkingTree>warning</jgit.dirtyWorkingTree>
+          <format>yyyyMMddHHmm</format>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile, readdir, realpath, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import {readFileSync} from 'node:fs';
@@ -26,8 +27,14 @@ export class BridgeError extends Error {
   toJSON() { return { code: this.code, message: this.message, details: this.details }; }
 }
 
-export function defaultRuntimeDirectory() {
-  return path.resolve(process.env.KNIME_AGENT_RUNTIME || path.join(projectRoot, 'runtime'));
+/**
+ * KNIME_AGENT_RUNTIME, else ~/.knime-agent/runtime. The bridge bundle uses the same
+ * default (-Dknime.agent.runtime overrides it), so an extension-installed KNIME and
+ * this server meet without configuration. scripts/launch.mjs keeps its own
+ * <repo>/runtime; pass --runtime or KNIME_AGENT_RUNTIME when using the launcher.
+ */
+export function defaultRuntimeDirectory(env = process.env) {
+  return path.resolve(env.KNIME_AGENT_RUNTIME || path.join(os.homedir(), '.knime-agent', 'runtime'));
 }
 
 function object(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }

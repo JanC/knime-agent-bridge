@@ -4,11 +4,11 @@
     "home": "KNIME 5.12.0.app",
     "coreVersion": "5.12.0.v202606180846"
   },
-  "sourceFiles": 24,
+  "sourceFiles": 26,
   "summary": {
     "bundles": 19,
     "classes": 159,
-    "members": 459
+    "members": 462
   },
   "bundles": [
     {
@@ -398,7 +398,7 @@
           ]
         }
       ],
-      "reachedBy": "indirect (re-export)"
+      "reachedBy": "Require-Bundle"
     },
     {
       "bundle": "org.eclipse.osgi",
@@ -436,6 +436,9 @@
           "name": "org.osgi.framework.Version",
           "stability": "exported",
           "members": [
+            "getMajor()I",
+            "getMicro()I",
+            "getMinor()I",
             "toString()Ljava/lang/String;"
           ]
         }
@@ -1526,7 +1529,7 @@
           ]
         }
       ],
-      "reachedBy": "indirect (re-export)"
+      "reachedBy": "Require-Bundle"
     },
     {
       "bundle": "org.knime.ui.java",
@@ -1546,92 +1549,92 @@
   ],
   "reflective": [
     {
-      "file": "java/src/org/knime/agent/BridgeActivator.java",
-      "line": 63,
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/BridgeActivator.java",
+      "line": 65,
       "code": "Bundle core=Platform.getBundle(\"org.knime.core\");"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 19,
       "code": "var bundle=Platform.getBundle(\"com.equo.chromium\");"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 21,
       "code": "Class<?> api=bundle.loadClass(\"com.equo.chromium.ChromiumBrowser\");"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 28,
       "code": "Collection<?> browsers=(Collection<?>)api.getMethod(\"getAllBrowsers\").invoke(null);"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 31,
       "code": "String url=(String)api.getMethod(\"getUrl\").invoke(browser);"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 35,
       "code": "Object browser=matches.get(0),component=api.getMethod(\"getUIComponent\").invoke(browser);"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 38,
       "code": "ObjectNode identity=BridgeActivator.JSON.createObjectNode().put(\"url\",(String)api.getMethod(\"getUrl\").invoke(browser))"
     },
     {
-      "file": "java/src/org/knime/agent/EditorViewportCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java",
       "line": 41,
       "code": "@SuppressWarnings(\"unchecked\") CompletableFuture<byte[]> future=(CompletableFuture<byte[]>)api.getMethod(\"captureScreenshot\").invoke(browser);"
     },
     {
-      "file": "java/src/org/knime/agent/GatewayAccess.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/GatewayAccess.java",
       "line": 134,
       "code": "try { type=Class.forName(\"org.knime.gateway.api.webui.entity.\"+name); }"
     },
     {
-      "file": "java/src/org/knime/agent/GatewayAccess.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/GatewayAccess.java",
       "line": 136,
       "code": "try { type=Class.forName(\"org.knime.gateway.api.entity.\"+name); }"
     },
     {
-      "file": "java/src/org/knime/agent/NativePreviewCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/NativePreviewCapture.java",
       "line": 53,
       "code": "var bundle=Platform.getBundle(\"org.knime.gateway.impl\");"
     },
     {
-      "file": "java/src/org/knime/agent/NativePreviewCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/NativePreviewCapture.java",
       "line": 55,
       "code": "Class<?> type=bundle.loadClass(\"org.knime.gateway.impl.webui.preview.GenerateSVGWorkflowSaveHook\");"
     },
     {
-      "file": "java/src/org/knime/agent/NativePreviewCapture.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/NativePreviewCapture.java",
       "line": 56,
       "code": "var method=type.getDeclaredMethod(\"renderPreviewSVG\",WorkflowManager.class,Path.class);"
     },
     {
-      "file": "java/src/org/knime/agent/SettingsHealth.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/SettingsHealth.java",
       "line": 13,
       "code": "Method method=type.getDeclaredMethod(name,parameters);method.setAccessible(true);return method;"
     },
     {
-      "file": "java/src/org/knime/agent/SettingsHealth.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/SettingsHealth.java",
       "line": 36,
       "code": "invoke(method(SingleNodeContainer.class,\"saveSettings\",NodeSettingsWO.class,boolean.class,boolean.class),container,envelope,false,false);"
     },
     {
-      "file": "java/src/org/knime/agent/SettingsHealth.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/SettingsHealth.java",
       "line": 41,
       "code": "try {invoke(method(NodeModel.class,\"saveSettingsTo\",NodeSettingsWO.class),model,generated);}"
     },
     {
-      "file": "java/src/org/knime/agent/SettingsHealth.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/SettingsHealth.java",
       "line": 52,
       "code": "invoke(method(NodeModel.class,\"validateSettings\",NodeSettingsRO.class),model,envelope.getNodeSettings(\"model\"));"
     },
     {
-      "file": "java/src/org/knime/agent/SettingsHealth.java",
+      "file": "bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/SettingsHealth.java",
       "line": 72,
       "code": "invoke(method(NodeContainer.class,\"validateSettings\",NodeSettingsRO.class),container,candidate);"
     }

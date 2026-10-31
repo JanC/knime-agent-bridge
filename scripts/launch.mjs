@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { BridgeClient } from '../src/client.mjs';
+import { BUNDLE_ID } from './lib/java-toolchain.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -124,15 +125,17 @@ export async function launchKnime({ argv = process.argv.slice(2), env = process.
       return fields.join(',');
     });
     const version=JSON.parse(await fs.readFile(path.join(root,'package.json'),'utf8')).version;
-    let bundleName='org.knime.agent.bridge_'+version+'.jar';
+    let bundleName=BUNDLE_ID+'_'+version+'.jar',bundleVersion=version;
     try {
       const latest=JSON.parse(await fs.readFile(path.join(root,'artifacts','latest.json'),'utf8'));
-      if(!/^org\.knime\.agent\.bridge_[0-9]+\.[0-9]+\.[0-9]+-[a-f0-9]{12}\.jar$/.test(latest.bundle)||!latest.bundle.startsWith('org.knime.agent.bridge_'+version+'-'))throw new Error('Invalid built bundle name in artifacts/latest.json');
+      if(!new RegExp('^'+BUNDLE_ID.replaceAll('.','\\.')+'_[0-9]+\\.[0-9]+\\.[0-9]+-[a-f0-9]{12}\\.jar$').test(latest.bundle)||!latest.bundle.startsWith(BUNDLE_ID+'_'+version+'-'))throw new Error('Invalid built bundle name in artifacts/latest.json');
       bundleName=latest.bundle;
+      // scripts/build.mjs stamps the manifest qualifier as dev<revision>; bundles.info must name the same version.
+      bundleVersion=version+'.dev'+latest.bundle.slice(-16,-4);
     } catch(error) {if(error.code!=='ENOENT')throw error;}
     const bundle = path.join(root, 'artifacts', bundleName);
     await fs.access(bundle);
-    lines.push(['org.knime.agent.bridge', version, pathToFileURL(bundle).href, '4', 'true'].join(','));
+    lines.push([BUNDLE_ID, bundleVersion, pathToFileURL(bundle).href, '4', 'true'].join(','));
     await fs.writeFile(path.join(config, 'org.eclipse.equinox.simpleconfigurator', 'bundles.info'), lines.join('\n') + '\n');
     // p2 does not URL-decode this location. Retain the config-relative form and
     // private profile copy so paths containing spaces remain valid.

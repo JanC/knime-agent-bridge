@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Inventory of the KNIME, Eclipse and third-party APIs the bridge bundle uses.
-// Compiles java/src against an installed KNIME, reads the constant pools with
+// Compiles the bundle sources against an installed KNIME, reads the constant pools with
 // javap and maps every referenced class to the bundle that exports its package.
 // Reflective access is invisible to javap, so it is listed from source.
 //
@@ -13,54 +13,17 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
+import {root, bundleSources, bundleManifest, requireKnimeHome, javaTool, walk, knimeClasspath, javac} from './lib/java-toolchain.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const exe = name => process.platform === 'win32' ? name + '.exe' : name;
 const OWN_PREFIX = 'org/knime/agent/';
 // org.w3c.dom and org.xml.sax come from the JDK; some Eclipse bundles re-export them.
 const JDK_PREFIXES = ['java/', 'javax/', 'jdk/', 'sun/', 'com/sun/proxy/', 'org/w3c/dom/', 'org/xml/sax/'];
-
-export function defaultKnimeHome(env = process.env) {
-  if (env.KNIME_HOME) return env.KNIME_HOME;
-  if (process.platform === 'darwin') {
-    const apps = existsSync('/Applications') ? spawnSync('ls', ['/Applications'], {encoding: 'utf8'}).stdout.split('\n') : [];
-    const knime = apps.filter(name => /^KNIME.*\.app$/.test(name)).sort(compareVersionedNames).pop();
-    if (knime) return path.join('/Applications', knime, 'Contents', 'Eclipse');
-  }
-  if (process.platform === 'win32' && env.LOCALAPPDATA) return path.join(env.LOCALAPPDATA, 'Programs', 'KNIME');
-  throw new Error('KNIME installation not found. Pass --knime <eclipse home> or set KNIME_HOME.');
-}
-
-function compareVersionedNames(a, b) {
-  const parts = s => (s.match(/\d+/g) ?? []).map(Number);
-  const [x, y] = [parts(a), parts(b)];
-  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
-  return a.localeCompare(b);
-}
-
-export function findTool(name, env = process.env) {
-  for (const home of [env.KNIME_AGENT_JDK, env.JAVA_HOME]) {
-    if (!home) continue;
-    const candidate = path.join(home, 'bin', exe(name));
-    if (existsSync(candidate)) return candidate;
-  }
-  return exe(name); // rely on PATH
-}
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, windowsHide: true, ...options});
   if (result.error) throw new Error(`${command}: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`${command} exited ${result.status}: ${(result.stderr || result.stdout).slice(0, 4000)}`);
   return result.stdout;
-}
-
-async function walk(dir) {
-  const out = [];
-  for (const entry of await fs.readdir(dir, {withFileTypes: true})) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...await walk(full)); else out.push(full);
-  }
-  return out;
 }
 
 // Manifest header values may continue on lines that start with one space.
@@ -131,7 +94,7 @@ async function bundleIndex(plugins) {
 // How the bridge manifest reaches each bundle: Require-Bundle, Import-Package,
 // or only through another bundle's re-export (fragile: not under our control).
 async function declaredDependencies() {
-  const headers = manifestHeaders(await fs.readFile(path.join(root, 'java', 'META-INF', 'MANIFEST.MF'), 'utf8'));
+  const headers = manifestHeaders(await fs.readFile(bundleManifest, 'utf8'));
   const names = value => (value ?? '').split(',').map(s => s.split(';')[0].trim()).filter(Boolean);
   return {bundles: new Set(names(headers['Require-Bundle'])), packages: new Set(names(headers['Import-Package']).map(p => p.replaceAll('.', '/')))};
 }
@@ -177,17 +140,11 @@ async function resolveOwner(owner, packages, cache) {
 }
 
 async function compile(knime, scratch) {
-  const plugins = path.join(knime, 'plugins');
-  const all = await walk(plugins);
-  const classpath = [...all.filter(p => p.endsWith('.jar')),
-    ...(await fs.readdir(plugins, {withFileTypes: true})).filter(e => e.isDirectory()).map(e => path.join(plugins, e.name))];
-  const sources = (await walk(path.join(root, 'java', 'src'))).filter(p => p.endsWith('.java')).sort();
+  const sources = (await walk(bundleSources)).filter(p => p.endsWith('.java')).sort();
   const classes = path.join(scratch, 'classes');
-  await fs.mkdir(classes, {recursive: true});
-  const quote = s => '"' + s.replaceAll('\\', '/') + '"';
-  const argfile = path.join(scratch, 'javac.args');
-  await fs.writeFile(argfile, ['--release', '21', '-encoding', 'UTF-8', '-nowarn', '-proc:none', '-classpath', quote(classpath.join(path.delimiter)), '-d', quote(classes), ...sources.map(quote)].join('\n'));
-  run(findTool('javac'), ['@' + argfile]);
+  const result = await javac({sources, classpath: await knimeClasspath(knime), out: classes, argfile: path.join(scratch, 'javac.args'), extra: ['-nowarn', '-proc:none']});
+  if (result.error) throw new Error('javac: ' + result.error.message);
+  if (result.status !== 0) throw new Error('javac failed: ' + (result.stderr || result.stdout).slice(0, 4000));
   return {classes, sources};
 }
 
@@ -246,13 +203,13 @@ function stability(info, owner) {
 export function toMarkdown(report) {
   const out = [];
   out.push('# KNIME API surface', '');
-  out.push('Generated by `node scripts/api-surface.mjs`. Do not edit by hand; rerun after a KNIME bump or a change in `java/src` and diff the result.', '');
+  out.push('Generated by `node scripts/api-surface.mjs`. Do not edit by hand; rerun after a KNIME bump or a change in the bundle sources and diff the result.', '');
   out.push(`- KNIME install: \`${report.knime.home}\``);
   out.push(`- \`org.knime.core\`: ${report.knime.coreVersion}`);
   out.push(`- Bridge sources: ${report.sourceFiles} files`);
   out.push(`- External classes referenced: ${report.summary.classes}, members: ${report.summary.members}, bundles: ${report.summary.bundles}`, '');
   out.push('Stability column: `exported` = public package of its bundle; `implementation package` = exported but named impl/internal or part of the KNIME UI backend (likely to change without notice); `internal` = marked x-internal or x-friends; `unexported` = not found in any Export-Package (would fail OSGi resolution).', '');
-  out.push('Reached by: how `java/META-INF/MANIFEST.MF` gets the bundle. `indirect (re-export)` resolves today only because another required bundle re-exports it; declare it explicitly when the manifest moves to Tycho (M1).', '');
+  out.push('Reached by: how the bridge `MANIFEST.MF` gets the bundle. `indirect (re-export)` resolves today only because another required bundle re-exports it; declare it explicitly when the manifest moves to Tycho (M1).', '');
   out.push('## Summary by bundle', '', '| Bundle | Version | Classes | Members | Stability | Reached by |', '|---|---|---|---|---|---|');
   for (const b of report.bundles) out.push(`| ${b.bundle} | ${b.version} | ${b.classes.length} | ${b.classes.reduce((n, c) => n + c.members.length, 0)} | ${[...new Set(b.classes.map(c => c.stability))].sort().join(', ')} | ${b.reachedBy} |`);
   out.push('', '## Reflective access (not visible to the compiler)', '', 'These break silently at runtime when KNIME renames or removes the target. Several call non-public KNIME methods with `setAccessible`. Check each one by hand on every KNIME bump.', '', '| Location | Code |', '|---|---|');
@@ -274,7 +231,7 @@ export async function buildReport({knime}) {
   try {
     const {classes, sources} = await compile(knime, scratch);
     const classFiles = (await walk(classes)).filter(p => p.endsWith('.class')).sort();
-    const pool = run(findTool('javap'), ['-v', '-p', ...classFiles]);
+    const pool = run(javaTool('javap'), ['-v', '-p', ...classFiles]);
     const packages = await bundleIndex(path.join(knime, 'plugins'));
     const owners = new Map(); // owner -> Set(member signature)
     for (const ref of constantPoolReferences(pool)) {
@@ -308,7 +265,7 @@ export async function buildReport({knime}) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {values} = parseArgs({options: {knime: {type: 'string'}, json: {type: 'string'}, markdown: {type: 'string'}}, strict: true});
-  const knime = path.resolve(values.knime ?? defaultKnimeHome());
+  const knime = path.resolve(values.knime ?? requireKnimeHome());
   const report = await buildReport({knime});
   const markdown = values.markdown ?? path.join(root, 'docs', 'KNIME_API_SURFACE.md');
   const json = values.json ?? path.join(root, 'docs', 'knime-api-surface.json');

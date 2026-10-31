@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {needsKnime} from './helpers/requirements.mjs';
+import {javaTool,findKnimeHome} from '../scripts/lib/java-toolchain.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -15,19 +17,18 @@ async function sources(directory) {
   }
   return out;
 }
-test('production dispatch/journal harness bounds diagnostics and preserves serialized effects and primary failures',async()=>{
-  const plugins=path.join(process.env.KNIME_HOME||path.join(process.env.LOCALAPPDATA,'Programs','KNIME'),'plugins');
+test('production dispatch/journal harness bounds diagnostics and preserves serialized effects and primary failures',{skip:needsKnime},async()=>{
+  const plugins=path.join(findKnimeHome(),'plugins');
   const jars=(await fs.readdir(plugins)).filter(name=>/^com\.fasterxml\.jackson\.core\.jackson-(core|databind|annotations)_.*\.jar$/.test(name)).map(name=>path.join(plugins,name));
   assert.equal(jars.length,3);
   const scratch=path.join(root,'build','native-stage-harness-'+randomUUID());
   await fs.mkdir(scratch,{recursive:true});
-  const jdk=process.env.KNIME_AGENT_JDK||'C:/Program Files/Java/jdk-24';
-  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry'].map(name=>path.join(root,'java/src/org/knime/agent/'+name+'.java'));
+  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory'].map(name=>path.join(root,'bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java'));
   // Before telemetry exists, compile the real baseline without the absent source.
   const available=[];for(const file of owned)try{await fs.access(file);available.push(file);}catch(error){if(error.code!=='ENOENT')throw error;}
-  const compilation=spawnSync(path.join(jdk,'bin','javac.exe'),['--release','21','-encoding','UTF-8','-cp',jars.join(path.delimiter),'-d',scratch,...available,...await sources(path.join(root,'tests/java/stage-stubs')),path.join(root,'tests/java/StageTelemetryHarness.java')],{encoding:'utf8',windowsHide:true});
+  const compilation=spawnSync(javaTool('javac'),['--release','21','-encoding','UTF-8','-cp',jars.join(path.delimiter),'-d',scratch,...available,...await sources(path.join(root,'tests/java/stage-stubs')),path.join(root,'tests/java/StageTelemetryHarness.java')],{encoding:'utf8',windowsHide:true});
   assert.equal(compilation.status,0,compilation.stdout+compilation.stderr);
-  const execution=spawnSync(path.join(jdk,'bin','java.exe'),['-ea','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});
+  const execution=spawnSync(javaTool('java'),['-ea','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});
   await fs.writeFile(path.join(scratch,'execution.txt'),execution.stdout+execution.stderr);
   assert.equal(execution.status,0,execution.stdout+execution.stderr+'\nEvidence: '+scratch);
   assert.match(execution.stdout,/production dispatch telemetry verified/);

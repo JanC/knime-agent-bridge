@@ -1,4 +1,6 @@
 import test from 'node:test';
+import {needsBuild} from './helpers/requirements.mjs';
+import {javaTool} from '../scripts/lib/java-toolchain.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -7,27 +9,26 @@ import os from 'node:os';
 import {spawnSync} from 'node:child_process';
 
 test('narrow native capture adapters are present (source contract, not runtime proof)',async()=>{
- const preview=await fs.readFile('java/src/org/knime/agent/NativePreviewCapture.java','utf8');
+ const preview=await fs.readFile('bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/NativePreviewCapture.java','utf8');
  assert.match(preview,/getDeclaredMethod\("renderPreviewSVG",WorkflowManager\.class,Path\.class\)/);
  assert.doesNotMatch(preview,/\.onSave\(/);
- const viewport=await fs.readFile('java/src/org/knime/agent/EditorViewportCapture.java','utf8');
+ const viewport=await fs.readFile('bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/EditorViewportCapture.java','utf8');
  assert.match(viewport,/model-stable-render-unconfirmed/);
  assert.match(viewport,/getAllBrowsers/);
 });
 
-test('JVM behavioral probes reject malformed screenshots, path escapes and UUID payload reuse',{timeout:60000},async()=>{
- const jdk=process.env.KNIME_AGENT_JDK||'C:/Program Files/Java/jdk-24';
+test('JVM behavioral probes reject malformed screenshots, path escapes and UUID payload reuse',{skip:needsBuild,timeout:60000},async()=>{
  const sourceArgs=await fs.readFile('build/javac.args','utf8');
  const cp=sourceArgs.split(/\r?\n/)[sourceArgs.split(/\r?\n/).indexOf('-classpath')+1].replace(/^"|"$/g,'');
  const scratch=await fs.mkdtemp(path.join(os.tmpdir(),'knime-native-utility-'));
  const quote=s=>'"'+s.replaceAll('\\','/')+'"';
  const classpath=[path.resolve('build/classes'),scratch,cp].join(path.delimiter);
  const javacArgs=path.join(scratch,'compile.args'),javaArgs=path.join(scratch,'run.args');
- await fs.writeFile(javacArgs,['--release','21','-classpath',quote(classpath),'-d',quote(scratch),quote(path.resolve('java/test/org/knime/agent/NativeUtilityProbe.java'))].join('\n'));
- const compilation=spawnSync(path.join(jdk,'bin','javac.exe'),['@'+javacArgs],{encoding:'utf8',windowsHide:true});
+ await fs.writeFile(javacArgs,['--release','21','-classpath',quote(classpath),'-d',quote(scratch),quote(path.resolve('tests/java/probes/org/knime/agent/NativeUtilityProbe.java'))].join('\n'));
+ const compilation=spawnSync(javaTool('javac'),['@'+javacArgs],{encoding:'utf8',windowsHide:true});
  assert.equal(compilation.status,0,compilation.stderr);
  await fs.writeFile(javaArgs,['-classpath',quote(classpath),'org.knime.agent.NativeUtilityProbe',quote(scratch)].join('\n'));
- const result=spawnSync(path.join(jdk,'bin','java.exe'),['@'+javaArgs],{encoding:'utf8',windowsHide:true});
+ const result=spawnSync(javaTool('java'),['@'+javaArgs],{encoding:'utf8',windowsHide:true});
  assert.equal(result.status,0,result.stderr);
  assert.match(result.stdout,/assertions=17; runtime-model-proof=false/);
 });

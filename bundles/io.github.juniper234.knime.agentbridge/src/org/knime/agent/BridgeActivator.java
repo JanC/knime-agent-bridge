@@ -14,7 +14,8 @@ import org.eclipse.ui.PlatformUI;
 /** A local, per-process command queue. No sockets, account tokens, or remote services. */
 public final class BridgeActivator implements BundleActivator {
     static final ObjectMapper JSON = new ObjectMapper().enable(com.fasterxml.jackson.core.JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
-    static final String VERSION = "0.5.0";
+    /** major.minor.micro of this bundle; matches package.json of the Node server. */
+    static volatile String version="unknown";
     private final String id = UUID.randomUUID().toString();
     private final String startedAt = Instant.now().toString();
     private ScheduledExecutorService heartbeat;
@@ -31,9 +32,8 @@ public final class BridgeActivator implements BundleActivator {
     private volatile String problem;
 
     @Override public void start(BundleContext context) throws Exception {
-        String root=System.getProperty("knime.agent.runtime");
-        if(root==null || root.isBlank()) root=Path.of(System.getProperty("user.home"),".knime-agent","runtime").toString();
-        session=Path.of(root).toAbsolutePath().resolve("sessions").resolve(id);
+        version=bridgeVersion(context.getBundle().getVersion());
+        session=RuntimeDirectory.resolve().resolve("sessions").resolve(id);
         Files.createDirectories(session.resolve("requests"));
         Files.createDirectories(session.resolve("responses"));
         Files.createDirectories(session.resolve("inflight"));
@@ -42,7 +42,7 @@ public final class BridgeActivator implements BundleActivator {
             if(!Files.isRegularFile(loaded))throw new IllegalStateException("Running bridge bundle is not a JAR");
             bundleFingerprint=RevisionTracker.bytesDigest(Files.readAllBytes(loaded));
         } catch(Exception e) {problem="Loaded JAR fingerprint unavailable: "+e.getClass().getSimpleName()+"; bundle="+context.getBundle().getLocation();}
-        capabilityFingerprint=RevisionTracker.digest(JSON.valueToTree(Map.of("version",VERSION,"policies",OperationPolicy.coverage(),"canvas",CanvasAccess.capabilities())));
+        capabilityFingerprint=RevisionTracker.digest(JSON.valueToTree(Map.of("version",version,"policies",OperationPolicy.coverage(),"canvas",CanvasAccess.capabilities())));
         contexts=new ContextAccess(metadata("starting"));
         operations=new OperationAccess(session,id);canvas=new CanvasAccess(contexts,new ArtifactStore(session));
         jobs=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(64),r->{Thread t=new Thread(r,"knime-agent-native-jobs");t.setDaemon(true);return t;});
@@ -55,9 +55,11 @@ public final class BridgeActivator implements BundleActivator {
         requests.scheduleWithFixedDelay(this::poll,0,50,TimeUnit.MILLISECONDS);
     }
 
+    static String bridgeVersion(Version bundle){return bundle.getMajor()+"."+bundle.getMinor()+"."+bundle.getMicro();}
+
     private ObjectNode metadata(String status) {
         ObjectNode m=JSON.createObjectNode();
-        m.put("id",id);m.put("pid",ProcessHandle.current().pid());m.put("bridgeVersion",VERSION);
+        m.put("id",id);m.put("pid",ProcessHandle.current().pid());m.put("bridgeVersion",version);
         m.put("bundleFingerprint",bundleFingerprint).put("capabilityFingerprint",capabilityFingerprint);
         m.set("operationPolicies",OperationPolicy.coverage());m.set("canvasCapabilities",JSON.valueToTree(CanvasAccess.capabilities()));
         Bundle core=Platform.getBundle("org.knime.core");
