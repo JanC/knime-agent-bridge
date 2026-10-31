@@ -87,6 +87,19 @@ function tileManifest(bounds, scale, sourceFrameId) {
   return { tiles };
 }
 
+// Chrome can return a stale frame right after the viewport or SVG size changes, which
+// shows up as repeated labels with missing shapes. Page scripts are disabled, so frame
+// callbacks cannot be awaited; instead repeat the capture until two are byte-identical.
+export async function stableScreenshot(capture, attempts = 5) {
+  let previous = await capture();
+  for (let i = 1; i < attempts; i++) {
+    const next = await capture();
+    if (next.equals(previous)) return { data: next, stable: true };
+    previous = next;
+  }
+  return { data: previous, stable: false };
+}
+
 export async function renderSvg({ svg, context, sourceKind = 'native-preview', sourceFrameId = randomUUID(), freshness = 'model-stable-render-unconfirmed', outputDirectory, sourceArtifact, nativeLayout, omissions: initialOmissions = [], nativeCoverage, expectedFrameEvidence, options = {} }) {
   if (typeof svg !== 'string' || Buffer.byteLength(svg) > LIMITS.sourceBytes) throw new TypeError('SVG source exceeds the bounded source budget.');
   if (!context?.contextId) throw new TypeError('A bound canvas context is required.');
@@ -167,7 +180,8 @@ export async function renderSvg({ svg, context, sourceKind = 'native-preview', s
       if (width * height > LIMITS.imagePixels || width > 8192 || height > 8192) { omissions.push({ kind: 'image-pixel-budget-exceeded', artifactId: tile.artifactId, requiredCrop: tile.crop }); continue; }
       await page.setViewportSize({ width: Math.ceil(width / deviceScaleFactor), height: Math.ceil(height / deviceScaleFactor) });
       await page.evaluate(({ crop, width, height, dsf }) => { const root = document.querySelector('body > svg'); root.setAttribute('viewBox', `${crop.x} ${crop.y} ${crop.width} ${crop.height}`); root.setAttribute('width', width / dsf); root.setAttribute('height', height / dsf); }, { crop: tile.crop, width, height, dsf: deviceScaleFactor });
-      const data = await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: width / deviceScaleFactor, height: height / deviceScaleFactor }, animations: 'disabled', timeout: 15000 });
+      const { data, stable } = await stableScreenshot(() => page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: width / deviceScaleFactor, height: height / deviceScaleFactor }, animations: 'disabled', timeout: 15000 }));
+      if (!stable) omissions.push({ kind: 'render-unstable', artifactId: tile.artifactId });
       if (data.length > LIMITS.imageBytes || encodedBytes + Math.ceil(data.length / 3) * 4 > LIMITS.toolBytes - 256 * 1024) { omissions.push({ kind: 'image-byte-budget-exceeded', artifactId: tile.artifactId, requiredCrop: tile.crop }); continue; }
       const actual = validatePng(data), sx = actual.width / tile.crop.width, sy = actual.height / tile.crop.height;
       artifacts.push({ artifactId: tile.artifactId, sourceFrameId, mimeType: 'image/png', bytes: data.length, sha256: sha256(data), width: actual.width, height: actual.height, role: tile.role, cropWorkflowBounds: tile.crop, workflowToPixel: [sx, 0, 0, sy, -tile.crop.x * sx, -tile.crop.y * sy], hostDownsampling: 'unknown' });
