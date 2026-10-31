@@ -180,18 +180,40 @@ API surface findings (`docs/KNIME_API_SURFACE.md`): 19 bundles, 159 classes, 459
   - Launcher tests: inject `KNIME_HOME` in the test env instead of relying on `LOCALAPPDATA`.
 - `package.json`: `test:unit` (no KNIME, no browser), `test:live` (needs KNIME), keep `test`.
 
+**Progress 2026-10-31 [mac]** (commit `77fd786`). Done as planned, with these differences:
+
+- Tycho 5.0.4. Target is `releng/target/knime-5.12.target` against `https://update.knime.com/analytics-platform/lts/5.12/5.12.0` in `planner` mode (`slicer` does not follow dependencies). Every required bundle, Eclipse included, comes from that one site. No `.mvn/extensions.xml` (plain `pom.xml`).
+- Bundle ID `io.github.juniper234.knime.agentbridge` (D2, matches the git remote). Java package stays `org.knime.agent`.
+- Java harnesses were **not** moved into a Maven module. Instead `scripts/lib/java-toolchain.mjs` finds the JDK and KNIME on both OSes, and the Node tests use it. Same coverage, much less churn.
+- No `test:unit` / `test:live` scripts. `npm test` runs what the machine supports; `tests/helpers/requirements.mjs` skips the rest with a reason (needs JDK, KNIME, dev build, `KNIME_AGENT_LIVE=1`, or Windows).
+- `scripts/build.mjs` stays the developer build (no `--legacy` flag); it stamps the qualifier as `dev<source hash>` and `launch.mjs` writes the matching version into `bundles.info`.
+- Fixed a v0.5 bug found on the way: the stage telemetry harness could not compile (stubs for `Platform`, `FileLocator` missing).
+- `package.json` and the bundle are 0.6.0.
+
 **Acceptance**
 
-- [ ] [both] `mvn -B verify` builds the bundle from a clean clone with only JDK 21 and Maven installed. No KNIME install needed if the p2 target works (otherwise needs `KNIME_HOME`, see M0 risk).
-- [ ] [both] Two clean builds of the same commit produce byte-identical bundle JARs (`shasum -a 256` / `Get-FileHash`).
-- [ ] [both] Built JAR manifest shows optional JNA imports and the chosen version ranges (`unzip -p ... META-INF/MANIFEST.MF`).
-- [ ] [mac] `npm ci && npm run test:unit` passes with 0 failures. Live tests show as skipped.
-- [ ] [win] Same on Windows 11 with Edge installed.
-- [ ] [mac] Canvas render unit tests pass with Chrome installed and no Edge.
-- [ ] [mac] Lifecycle test reports a non-null `creationIdentity` with source `darwin_ps_lstart`.
-- [ ] [both] Automated: Maven-built Java harness tests (`ContextRegistryHarness`, `PathLineageHarness`, etc.) run in `mvn verify`.
+- [x] [mac] `mvn -B verify` builds the bundle with only JDK 21 and Maven (no KNIME install used). About 30 s cold, 6 s warm.
+- [ ] [win] Same on Windows.
+- [x] [mac] Two clean builds of the same commit produce byte-identical bundle JARs (SHA-256 `a0cb06ca…` for `77fd786`); qualifier `0.6.0.202610311128` = commit time in UTC.
+- [ ] [win] Windows build of the same commit has the same SHA-256 as the Mac build.
+- [x] [both] Built JAR manifest shows optional JNA imports and the chosen version ranges.
+- [x] [mac] `npm ci && npm test`: 255 tests, 225 pass, 0 fail, 30 skipped (8 live KNIME, 1 Windows-only, rest env-gated v0.4/v0.5 cohorts). Without KNIME and `build/`: 218 pass, 0 fail, 37 skipped.
+- [ ] [win] `npm test` on Windows 11 with Edge: 0 failures. Also `node scripts/build.mjs` then `npm test` so the probe tests run.
+- [x] [mac] Canvas render tests pass with Chrome and no Edge (`src/canvas/browser.mjs`, `tests/canvas-browser.test.mjs`).
+- [x] [mac] Lifecycle test reports a non-null `creationIdentity` with source `darwin_ps_lstart`.
+- [x] [mac] Java harness tests (`ContextRegistryHarness`, `PathLineageHarness`, stage telemetry, operation retention, workflow export, dialog probe) run and pass on macOS via the shared toolchain.
 
-**Risks**: Tycho may reject access to internal packages that plain `javac` accepted (plain `javac` ignores OSGi visibility). If so, add `x-friends`-aware compiler settings or `Eclipse-ExtensibleAPI`-free workarounds; worst case keep the legacy classpath build for compilation and use Tycho only for feature/site packaging.
+**To run on Windows** (in a clone of this branch, JDK 21 and Maven installed):
+
+```
+mvn -B verify
+certutil -hashfile bundles\io.github.juniper234.knime.agentbridge\target\io.github.juniper234.knime.agentbridge-0.6.0-SNAPSHOT.jar SHA256
+npm ci
+node scripts/build.mjs
+npm test
+```
+
+**Risks** (R3 resolved on macOS: no access errors, only an encoding warning, now fixed): Tycho may reject access to internal packages that plain `javac` accepted (plain `javac` ignores OSGi visibility). If so, add `x-friends`-aware compiler settings or `Eclipse-ExtensibleAPI`-free workarounds; worst case keep the legacy classpath build for compilation and use Tycho only for feature/site packaging.
 
 ---
 
@@ -366,6 +388,7 @@ Decided (D3):
 1. **Declared range**: manifest/feature require `[5.12.0, 6.0.0)` so a KNIME update never gets blocked by the bridge.
 2. **Runtime gate**: the activator holds a list of verified KNIME minor versions (built from `COMPATIBILITY.md` at build time). On a version not in the list, the bridge starts but forces read-only, sets `health.compatibility: "unverified"`, and says so in `health` and the KNIME preference page. Writes on an unverified version need a second explicit setting ("allow on unverified KNIME versions").
 3. **Linkage safety**: wrap native dispatch so `LinkageError` (`NoSuchMethodError`, `NoClassDefFoundError`) becomes `UNSUPPORTED_KNIME_API` with the missing symbol, instead of a crash or a hung request.
+   Existing exact pin: `NativePreviewCapture.BUNDLE_VERSION` requires `org.knime.gateway.impl 5.12.0.v202606171738` exactly, so native canvas previews switch off on any other KNIME build, including a 5.12.x service release. Move it into the same verified-versions list.
 4. **Testing a new KNIME release** (each ~6 weeks):
    - Within 1 week: `knime-compat.yml` compiles against the new target and diffs the API surface. [CI, both]
    - Rerun `node scripts/api-surface.mjs --knime <new install>` and diff `docs/knime-api-surface.json`; check every row of its reflective table by hand. [mac or win]
