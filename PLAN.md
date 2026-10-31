@@ -325,18 +325,21 @@ Run with the M3 extension and M4 `.mcpb`, both write switches on, against a synt
 - `scripts/verify-install.mjs`: scripted version of the checklist below via the CLI, writing `docs/measurements/install-<os>-<version>.json`.
 - `docs/VERIFICATION-0.6.md`: exact KNIME build, OS, verified operations, untested gaps.
 
+**Progress (2026-10-31)**: `scripts/verify-install.mjs` passed 11 of 11 steps against the installed extension in a second KNIME window on `runtime/workspace-m5`, pinned to that session. The synthetic workflow is created by the script itself, so no separate `tests/fixtures/sample-workflow/` was needed. Results are in `docs/VERIFICATION-0.6.md` and `docs/measurements/install-darwin-0.6.0.json`.
+
 **Acceptance [mac]**
 
-From Claude Desktop, ask the agent to:
+Run by the script through MCP. A by-hand run from Claude Desktop is still open.
 
-- [ ] Inspect: list sessions, bind a context, read the workflow snapshot, read settings of one node.
-- [ ] Edit settings: preview then apply a typed settings change; `settingsValidation` clean; snapshot shows the new value.
-- [ ] Execute: execute the workflow; `knime_wait` until executed; node messages empty.
-- [ ] Read a table: `knime_table` page and `knime_table_verify` with expected row count and a constant column.
-- [ ] Save: save the project; `knime_wait` clean-save; close and reopen in KNIME; the setting persists (independent check via `core.settings.get` after reopen).
-- [ ] Canvas: one `knime_canvas_view` overview image, reviewed.
-- [ ] Repo scripts: `npm run test:adapter`, `KNIME_AGENT_LIVE=1 npm run test:live`, `npm run test:beta` against the synthetic workspace. Record results.
-- [ ] Functional, visual and persistence evidence listed separately in `docs/VERIFICATION-0.6.md`.
+- [x] Inspect: list sessions, bind a context, read the workflow snapshot, read settings of one node.
+- [x] Edit settings: preview then apply a typed settings change; `settingsValidation` clean; snapshot shows the new value.
+- [x] Execute: execute the workflow; `knime_wait` until executed; node messages empty.
+- [~] Read a table: `knime_table` page and `knime_table_verify` with expected row count. The constant column was not checked because the fixture has none.
+- [x] Save: save the project; `knime_wait` clean-save; close and reopen in KNIME; the setting persists (checked via `knime_settings` after reopen).
+- [x] Canvas: one `knime_canvas_view` overview image, reviewed.
+- [~] Repo scripts: `npm run test:adapter` (49/49) and `npm test` (240 pass, 30 live skips). The live test files and `test:beta` were not run against the installed extension because they do not pin a session yet.
+- [x] Functional, visual and persistence evidence listed separately in `docs/VERIFICATION-0.6.md`.
+- [ ] Same flow by hand from Claude Desktop, including the three `.mcpb` settings.
 
 **Risks**: `test:beta` and `verify-lifecycle-v05.mjs` may assume the launcher. Adapt them to attach to an already running KNIME (explicit `--session`).
 
