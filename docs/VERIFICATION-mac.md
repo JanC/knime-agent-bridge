@@ -48,3 +48,12 @@ Run with `KNIME_AGENT_RUNTIME=runtime` and the gates shown. Every test listed pa
 - Installing through p2 (M3) and Claude Desktop `.mcpb` (M4).
 - UI responsiveness (unmeasured on every platform).
 - Quitting KNIME from the bridge: the test instance was stopped with SIGTERM to its own PID.
+
+## Extension and Claude Desktop bundle (M3, M4)
+
+| Check | Result |
+|---|---|
+| Update-site zip installed through KNIME's Install Extensions dialog into the user's KNIME 5.12.0 | Pass (user, 2026-10-31). Bridge started after restart with no launcher; session in `~/.knime-agent/runtime`, workspace `~/knime-workspace`, fingerprint equals the zip's JAR |
+| Preferences > KNIME > Agent Bridge | Present; agent reported changes off when unticked (user) |
+| `.mcpb` double-click install in Claude Desktop 4.29.0 | Pass (user). Claude Desktop log: "Using built-in Node.js for MCP server"; exact Node version not reported |
+| Bundle server read and refused write (`KNIME_AGENT_ALLOW_WRITES=false`) | Pass, run from the unpacked bundle |
