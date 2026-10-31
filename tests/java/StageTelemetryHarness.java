@@ -22,11 +22,28 @@ public final class StageTelemetryHarness {
         assert Files.isRegularFile(file):"response absent "+id;
         return (ObjectNode)BridgeActivator.JSON.readTree(Files.readAllBytes(file));
     }
+    /** With changes off, a mutation is refused before acceptance: no receipt, no queue entry, no effect. */
+    static void writeGate()throws Exception {
+        ObjectNode health=request("health");submit(health);ObjectNode policy=(ObjectNode)response(health.path("id").asText()).path("result").path("writePolicy");
+        assert !policy.path("enabled").asBoolean(true):"writePolicy should report disabled "+policy;
+        assert policy.path("source").asText().equals("system-property"):policy.toString();
+        assert policy.path("readOperations").toString().contains("health"):policy.toString();
+        ObjectNode edit=mutation("core.reset");submit(edit);ObjectNode refused=response(edit.path("id").asText());
+        assert !refused.path("ok").asBoolean(true):refused.toString();
+        assert refused.path("error").path("code").asText().equals("WRITES_DISABLED"):refused.toString();
+        assert refused.path("error").path("details").path("nativeDispatch").asText().equals("not_started"):refused.toString();
+        assert refused.path("error").path("details").path("enableAt").asText().contains("Agent Bridge"):refused.toString();
+        assert !Files.exists(session.resolve("operations").resolve(edit.path("id").asText()+".json")):"refused mutation must not leave a receipt";
+        assert CoreAccess.effects==0&&jobs.getTaskCount()==0:"refused mutation reached the native worker";
+        ObjectNode read=request("health");submit(read);assert response(read.path("id").asText()).path("ok").asBoolean();
+        System.out.println("write gate verified");
+    }
     public static void main(String[] argv)throws Exception {
         session=Path.of(argv[0]).resolve("session");for(String name:List.of("requests","responses","inflight"))Files.createDirectories(session.resolve(name));
         bridge=new BridgeActivator();field("session",session);field("ready",true);field("contexts",new ContextAccess(object()));
         field("operations",new OperationAccess(session,"fixture-session"));field("canvas",new CanvasAccess(null,null));
         jobs=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(64));field("jobs",jobs);
+        if("false".equals(System.getProperty("knime.agent.allowWrites"))) {writeGate();jobs.shutdownNow();return;}
         try {
             field("ready",false);ObjectNode starting=request("health");submit(starting);assert response(starting.path("id").asText()).path("result").path("status").asText().equals("starting");field("ready",true);
             ObjectNode cold=request("health");submit(cold);assert response(cold.path("id").asText()).path("ok").asBoolean();

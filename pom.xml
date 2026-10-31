@@ -21,6 +21,8 @@
 
   <modules>
     <module>bundles/io.github.juniper234.knime.agentbridge</module>
+    <module>features/io.github.juniper234.knime.agentbridge.feature</module>
+    <module>releng/update-site</module>
   </modules>
 
   <build>

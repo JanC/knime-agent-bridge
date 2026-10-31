@@ -23,14 +23,17 @@ test('production dispatch/journal harness bounds diagnostics and preserves seria
   assert.equal(jars.length,3);
   const scratch=path.join(root,'build','native-stage-harness-'+randomUUID());
   await fs.mkdir(scratch,{recursive:true});
-  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory'].map(name=>path.join(root,'bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java'));
+  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy'].map(name=>path.join(root,'bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java'));
   // Before telemetry exists, compile the real baseline without the absent source.
   const available=[];for(const file of owned)try{await fs.access(file);available.push(file);}catch(error){if(error.code!=='ENOENT')throw error;}
   const compilation=spawnSync(javaTool('javac'),['--release','21','-encoding','UTF-8','-cp',jars.join(path.delimiter),'-d',scratch,...available,...await sources(path.join(root,'tests/java/stage-stubs')),path.join(root,'tests/java/StageTelemetryHarness.java')],{encoding:'utf8',windowsHide:true});
   assert.equal(compilation.status,0,compilation.stdout+compilation.stderr);
-  const execution=spawnSync(javaTool('java'),['-ea','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});
+  const execution=spawnSync(javaTool('java'),['-ea','-Dknime.agent.allowWrites=true','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});
   await fs.writeFile(path.join(scratch,'execution.txt'),execution.stdout+execution.stderr);
   assert.equal(execution.status,0,execution.stdout+execution.stderr+'\nEvidence: '+scratch);
   assert.match(execution.stdout,/production dispatch telemetry verified/);
+  const gated=spawnSync(javaTool('java'),['-ea','-Dknime.agent.allowWrites=false','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',path.join(scratch,'write-gate')],{encoding:'utf8',windowsHide:true,timeout:30000});
+  assert.equal(gated.status,0,gated.stdout+gated.stderr);
+  assert.match(gated.stdout,/write gate verified/);
   // Evidence is intentionally retained; this harness never starts KNIME.
 });

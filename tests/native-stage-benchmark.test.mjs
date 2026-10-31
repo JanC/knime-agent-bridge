@@ -18,7 +18,7 @@ test('shared synthetic blocked-worker fixture measures baseline and changed heal
   for(const variant of ['baseline','changed']) {
     const scratch=path.join(evidence,variant);await fs.mkdir(scratch,{recursive:true});const sources=[];
     // Baseline = committed HEAD version of each file; a file not yet in HEAD (new or moved) uses the working copy.
-    for(const name of ['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory']) {
+    for(const name of ['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy']) {
       const file='bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java';
       const previous=variant==='baseline'?spawnSync('git',['show','HEAD:'+file],{cwd:root,encoding:'utf8',windowsHide:true}):null;
       if(previous?.status===0){const saved=path.join(scratch,name+'.java');await fs.writeFile(saved,previous.stdout);sources.push(saved);}
@@ -26,7 +26,7 @@ test('shared synthetic blocked-worker fixture measures baseline and changed heal
     }
     sources.push(...await javaFiles(path.join(root,'tests/java/stage-stubs')),path.join(root,'tests/java/StageTelemetryHarness.java'),path.join(root,'tests/java/StageLatencyHarness.java'));
     const compile=spawnSync(javaTool('javac'),['--release','21','-encoding','UTF-8','-cp',jars.join(path.delimiter),'-d',scratch,...sources],{encoding:'utf8',windowsHide:true});assert.equal(compile.status,0,compile.stdout+compile.stderr);
-    const run=spawnSync(javaTool('java'),['-ea','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageLatencyHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});await fs.writeFile(path.join(scratch,'execution.txt'),run.stdout+run.stderr);assert.equal(run.status,0,run.stdout+run.stderr);
+    const run=spawnSync(javaTool('java'),['-ea','-Dknime.agent.allowWrites=true','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageLatencyHarness',scratch],{encoding:'utf8',windowsHide:true,timeout:30000});await fs.writeFile(path.join(scratch,'execution.txt'),run.stdout+run.stderr);assert.equal(run.status,0,run.stdout+run.stderr);
     comparison[variant]=JSON.parse(await fs.readFile(path.join(scratch,'measurements.json'),'utf8'));
     for(const op of ['health','operation.get'])assert.equal(comparison[variant][op].samples,25);
   }

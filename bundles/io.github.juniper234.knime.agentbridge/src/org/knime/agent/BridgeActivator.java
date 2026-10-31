@@ -61,7 +61,7 @@ public final class BridgeActivator implements BundleActivator {
         ObjectNode m=JSON.createObjectNode();
         m.put("id",id);m.put("pid",ProcessHandle.current().pid());m.put("bridgeVersion",version);
         m.put("bundleFingerprint",bundleFingerprint).put("capabilityFingerprint",capabilityFingerprint);
-        m.set("operationPolicies",OperationPolicy.coverage());m.set("canvasCapabilities",JSON.valueToTree(CanvasAccess.capabilities()));
+        m.set("operationPolicies",OperationPolicy.coverage());m.set("writePolicy",writePolicy());m.set("canvasCapabilities",JSON.valueToTree(CanvasAccess.capabilities()));
         Bundle core=Platform.getBundle("org.knime.core");
         m.put("knimeVersion",core==null?"unknown":core.getVersion().toString());
         m.put("workspace",Platform.getInstanceLocation().getURL().toString());
@@ -98,6 +98,7 @@ public final class BridgeActivator implements BundleActivator {
             telemetry.read(requestId,operation,Files.size(claimed));
             if(!args.isObject())throw new IllegalArgumentException("args must be an object");
             if(!ready&&!safeRead(operation))throw new ContextAccess.Conflict("NATIVE_NOT_READY","Native dependencies are not ready; no operation was dispatched");
+            if(OperationPolicy.mutation(operation,args))requireWrites(operation,args);
             boolean tracked=!safeRead(operation)&&(OperationPolicy.mutation(operation,args)||operation.equals("canvas.preview")||operation.equals("canvas.viewport"));
             if(tracked) {
                 ObjectNode previous=operations.existing(requestId,request);
@@ -118,6 +119,21 @@ public final class BridgeActivator implements BundleActivator {
             }
         }
         publish(claimed,response,originalTelemetry);
+    }
+    /** Refuses before acceptance: no receipt is written and nothing reaches KNIME. */
+    private static void requireWrites(String operation,JsonNode args) {
+        WritePolicy.State policy=WritePolicy.current();
+        if(policy.enabled())return;
+        ObjectNode details=JSON.createObjectNode().put("operation",operation).put("writePolicySource",policy.source()).put("enableAt",WritePolicy.WHERE);
+        if(operation.equals("gateway.call"))details.put("method",args.path("method").asText());
+        throw new ContextAccess.Conflict("WRITES_DISABLED","Agent changes are turned off in this KNIME. Read operations still work; a user can allow changes again in "+WritePolicy.WHERE+".",details);
+    }
+    static ObjectNode writePolicy() {
+        WritePolicy.State policy=WritePolicy.current();
+        ObjectNode out=JSON.createObjectNode().put("enabled",policy.enabled()).put("source",policy.source());
+        out.set("readOperations",JSON.valueToTree(OperationPolicy.readOperations()));
+        out.set("gatewayReadMethods",JSON.valueToTree(OperationPolicy.gatewayReadMethods()));
+        return out;
     }
     private static boolean safeRead(String operation){return Set.of("health","operation.get","bridge.diagnostics").contains(operation);}
     private void executeControl(Path claimed,JsonNode request,ObjectNode response) {

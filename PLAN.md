@@ -108,6 +108,8 @@ Runtime contract after the change:
 
 ### Read-only design (D4, D5 decided)
 
+**Update 2026-10-31 (D4 changed):** writes are on by default. Everything below still applies when the user turns the preference off; only the defaults flipped.
+
 Read-only means exactly the operations in `OperationPolicy.READS` plus `gateway.call` methods in `GATEWAY_READS` (D5). Everything else is a write, including `desktop.openProject`, `desktop.saveProject`, `desktop.closeProject`, `desktop.dialogAction`, file exports (`core.port.export`, `core.workflow.export`) and any unknown operation. In read-only mode the agent can only inspect workflows the user already has open.
 
 Two layers, both default off:
@@ -268,6 +270,8 @@ Install path for each OS is: KNIME > Preferences > Install/Update > Available So
 - [ ] [win] Repeat install with KNIME in `C:\Program Files\KNIME` (admin install). Record whether elevation is needed.
 - [ ] Automated [both]: `mvn verify` includes a p2 metadata check (feature installable unit present, `p2.inf` instructions in `content.xml`).
 
+**Progress (2026-10-31, mac)**: built and dry-run. `mvn -B verify` now produces `releng/update-site/target/knime-agent-bridge-update-site-0.6.0.zip` (feature `io.github.juniper234.knime.agentbridge.feature`, category "KNIME Agent Bridge (community)", GPL-3.0 license text, `markStarted` in `p2.inf`). Installed into an APFS clone of KNIME 5.12.0 with the p2 director: the bundle is registered with `start=true`, KNIME started the bridge with no launcher, the session appeared in `~/.knime-agent/runtime` with `writePolicy.enabled: true, source: preference`, and a read plus a workflow creation succeeded. Director uninstall removed it from `bundles.info` (the JAR stays in `plugins/` until p2 cleanup). The Java gate is covered by the stage harness: with writes off, `core.reset` returns `WRITES_DISABLED` with `nativeDispatch: not_started`, no receipt and no worker task. Still open: the Install Extensions dialog by hand, the preference page in the UI and its live toggle, and the unsupported-version check. Install guide: `docs/INSTALL.md`.
+
 **Risks**: p2 "unsigned content" warning confuses non-technical users (no signing per D8; mitigate with the install guide). KNIME updates may be blocked by a strict version range (D3). Installing into a signed macOS `.app` may break its signature.
 
 ---
@@ -427,7 +431,7 @@ Decided (D3):
 | D1 | License | **Decided 2026-10-31: GPL-3.0** for the whole repo. Add `LICENSE` in M0; feature license text and `.mcpb` `license` field use it. | |
 | D2 | Bundle and package namespace | **Decided 2026-10-31: rename bundle symbolic name and feature ID only** (e.g. `io.github.<owner>.knime.agentbridge`, exact ID to confirm in M1). Java package `org.knime.agent` stays. Breaks v0.5 named profiles; add a migration note. | |
 | D3 | KNIME version pinning | **Decided 2026-10-31: loose range `[5.12,6.0)` + runtime gate** (section 4). | |
-| D4 | Where the write opt-in lives | **Decided 2026-10-31: both required** (KNIME preference enforced in Java, plus Claude Desktop setting). | |
+| D4 | Where the write opt-in lives | **Changed 2026-10-31: read-write by default.** The KNIME preference stays (enforced in Java) but starts on; turning it off makes every client read-only. The `.mcpb` setting (M4) also defaults to on. | |
 | D5 | What read-only allows | **Decided 2026-10-31: strict.** Only `OperationPolicy.READS` and `GATEWAY_READS`. No `desktop.openProject`, no exports. | |
 | D6 | KNIME distribution channel | **Decided 2026-10-31: build the packages only** (update-site zip and `.mcpb`). You ship them yourself. No GitHub Pages site, no Hub listing for now. | |
 | D7 | Legacy launcher and default runtime dir | **Decided 2026-10-31: leave the launcher** as the developer path. Node default moves to `~/.knime-agent/runtime`; the launcher keeps passing its own runtime explicitly. | |
