@@ -68,14 +68,19 @@ export async function manifest() {
   };
 }
 
+/** Copy the server with production dependencies only into `target` (replacing it). */
+export async function stageServer(target) {
+  await fs.rm(target, { recursive: true, force: true });
+  await fs.mkdir(target, { recursive: true });
+  for (const item of ['package.json', 'package-lock.json', 'LICENSE', 'README.md']) await fs.copyFile(path.join(root, item), path.join(target, item));
+  await fs.cp(path.join(root, 'src'), path.join(target, 'src'), { recursive: true });
+  // npm is npm.cmd on Windows, which only runs through a shell. Arguments are fixed strings.
+  run('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: target, shell: process.platform === 'win32' });
+}
+
 async function main() {
   const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
-  await fs.rm(stage, { recursive: true, force: true });
-  await fs.mkdir(stage, { recursive: true });
-  for (const item of ['package.json', 'package-lock.json', 'LICENSE', 'README.md']) await fs.copyFile(path.join(root, item), path.join(stage, item));
-  await fs.cp(path.join(root, 'src'), path.join(stage, 'src'), { recursive: true });
-  // npm is npm.cmd on Windows, which only runs through a shell. Arguments are fixed strings.
-  run('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: stage, shell: process.platform === 'win32' });
+  await stageServer(stage);
   await fs.writeFile(path.join(stage, 'manifest.json'), JSON.stringify(await manifest(), null, 2) + '\n');
   run(process.execPath, [mcpbCli, 'validate', path.join(stage, 'manifest.json')]);
   await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });

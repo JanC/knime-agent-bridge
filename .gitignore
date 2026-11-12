@@ -12,3 +12,4 @@ artifacts/*.sha256
 target/
 artifacts/*.mcpb
 .DS_Store
+artifacts/*.exe

@@ -368,6 +368,36 @@ Done as a non-technical user would, on a clean Windows 11 user account (or a fre
 
 ---
 
+### M6b Windows installer [win]
+
+One per-user setup program that does what `INSTALL.md` describes by hand. Decided 2026-11-01: unsigned for now (D8 stands; users see SmartScreen's "Windows protected your PC" and choose More info > Run anyway), x64 only (it also runs on Windows on ARM under emulation).
+
+**What it does**: installs to `%LOCALAPPDATA%\KnimeAgentBridge` without admin rights; bundles Node.js (pinned v26.13.0 x64, SHA-256 checked at build), the MCP server and both payloads. Pages: welcome, license, parts (KNIME extension, ChatGPT and Codex, Claude Desktop), KNIME folder (prefilled from `%LOCALAPPDATA%\Programs\KNIME` or `Program Files\KNIME`), progress, finish with "Start KNIME and check the connection". The logic is in `installer/windows/setup.mjs`, run with the bundled Node:
+
+- KNIME extension through the p2 director (asks to close KNIME first; asks for admin only when the KNIME folder is not writable; skips a same-version install, replaces an older one).
+- Codex and the ChatGPT desktop app: writes only the `knime-agent` tables in `~/.codex/config.toml` (backup kept as `config.toml.before-knime-agent`), pointing at the bundled Node.
+- Claude Desktop: opens the `.mcpb`, so Claude shows its own install dialog; unticked when no app handles `.mcpb`.
+- Start menu: connection check and uninstall. The uninstaller removes the extension and the Codex entry, then its own folder.
+
+**Build**: `npm run build:installer` (needs the update-site zip and `.mcpb` first) gives `artifacts/KNIME-Agent-Bridge-Setup-<version>.exe`, about 36 MB. On macOS NSIS runs in Docker (`installer/windows/nsis.Dockerfile`) because the native macOS 27 `makensis` 3.13 crashes with `std::bad_alloc`, also when built from source.
+
+**Progress (2026-11-01, mac)**: built. `tests/windows-setup.test.mjs` covers the config edit, KNIME detection, p2 arguments and the elevation command. On a copy of KNIME 5.12.0 in a folder with a space, `setup.mjs` reported an existing install, removed it and installed it again through the p2 director; Codex registration and removal left other entries untouched.
+
+**Progress (2026-11-01, win)**: first run on Windows; the user reports the installer worked. Details per item below are not recorded yet.
+
+**Acceptance [win]**
+
+- [ ] Download with Edge; record SmartScreen and Defender behavior.
+- [ ] Install with KNIME in `%LOCALAPPDATA%\Programs\KNIME` (no admin prompt) and in `Program Files` (one UAC prompt for the extension step).
+- [ ] KNIME running at install time: the Retry dialog appears and nothing is half installed.
+- [ ] After install: KNIME shows the preference page; Codex `/mcp` lists `knime-agent`; Claude Desktop shows its install dialog.
+- [ ] Finish-page check starts KNIME and reports "Connected".
+- [ ] Reinstall over an existing install while a Codex session runs the server (`node.exe` in use).
+- [ ] Uninstall from Settings > Apps: extension and Codex entry removed, folder gone, KNIME still starts.
+- [ ] User name with a space and with non-ASCII letters.
+
+---
+
 ### M7 Release [both]
 
 **Changes**

@@ -61,3 +61,12 @@ Run with `KNIME_AGENT_RUNTIME=runtime` and the gates shown. Every test listed pa
 ## Canvas selection (0.6)
 
 Test KNIME on `runtime/workspace-selection`, developer JAR, DevTools port only to drive clicks. `desktop.selection` returned an empty selection, then `root:1`,`root:2` after selecting through the UI store, then `root:1` after a real mouse click on the canvas. `knime_selection` named them (Table Creator, Column Filter) with native IDs and states. No `knime-agent-selection-*` keys remained in session storage. Not covered: nested workflows, Windows, the installed extension.
+
+## ChatGPT and Codex (2026-10-31)
+
+Registered with `node scripts/register-codex.mjs`, which writes `knime-agent` into `~/.codex/config.toml` (stdio, `KNIME_AGENT_ALLOW_WRITES=true`).
+
+- Codex CLI: the user confirmed the KNIME tools work.
+- ChatGPT desktop app: `knime-agent` shows under Plugins > MCPs and is enabled, but a normal chat does not see it and never starts the server. OpenAI's docs tie local MCP servers to the Codex host shared by the desktop app, CLI and IDE extension. A Codex task inside the desktop app was not tested yet.
+- ChatGPT web cannot use local servers.
+- Known issue: the registration stores the versioned Homebrew Node path (`/opt/homebrew/Cellar/node/<version>/bin/node`), which breaks after a Node upgrade.
