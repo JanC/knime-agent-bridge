@@ -89,6 +89,12 @@ export const toolCatalog = [
     run: (client, { session, timeoutMs, ...args }) => client.call('core.snapshot', args, { session, timeoutMs }),
   },
   {
+    name: 'knime_selection', title: 'See what the user selected in KNIME',
+    description: 'Return the nodes, annotations and connections the user currently has selected on the canvas of the active workflow tab, with node names, factories and states plus the projectId/workflowId/nodeId to pass to other tools. Use it when the user says "this node" or "the selected nodes". Read from KNIME internal UI state: it reflects the moment of the call, can be empty, and a KNIME update may make it unavailable.',
+    inputSchema: { session, timeoutMs }, annotations: { ...readOnly, idempotentHint: false },
+    run: readSelection,
+  },
+  {
     name: 'knime_settings', title: 'Read typed node settings',
     description: 'Read core.settings.get for one node, component or metanode in a loaded project. Returns the typed settings envelope and current node state without patching configuration. Preserve the envelope and native type names when reasoning about a later authorized settings change; supported fields depend on the actual node and its input data.',
     inputSchema: { projectId, nodeId, workflowId, session, timeoutMs }, annotations: readOnly,
@@ -180,6 +186,26 @@ export const operationGuide = {
   ],
   limits: 'KNIME gateway APIs are internal and version-specific. A discoverable method is not evidence every node family or third-party extension has been verified. Use the packaged capability matrix for beta acceptance evidence.',
 };
+
+// Selection IDs are gateway IDs; the snapshot adds names and native IDs. Naming is best effort:
+// the selection itself is still returned when the snapshot cannot be read.
+export async function readSelection(client, { session, timeoutMs } = {}) {
+  const selection = await client.call('desktop.selection', {}, { session, timeoutMs });
+  if (!selection?.available || !selection.projectId || !selection.nodeIds?.length) return selection;
+  try {
+    const args = { projectId: selection.projectId, depth: 0, ...(selection.workflowId && selection.workflowId !== 'root' ? { workflowId: selection.workflowId } : {}) };
+    const snapshot = await client.call('core.snapshot', args, { session, timeoutMs });
+    const byGateway = new Map((snapshot.nodes ?? []).map(node => [node.gatewayId ?? node.id, node]));
+    const nodes = selection.nodeIds.map(id => {
+      const node = byGateway.get(id);
+      return node ? { nodeId: id, nativeId: node.id, name: node.name, customName: node.customName ?? null, kind: node.kind, factoryId: node.factoryId ?? null, state: node.state }
+        : { nodeId: id, found: false };
+    });
+    return { ...selection, nodes };
+  } catch (error) {
+    return { ...selection, nodes: null, namingError: { code: error?.code ?? 'UNKNOWN', message: String(error?.message ?? error).slice(0, 300) } };
+  }
+}
 
 export async function dispatchTool(client, name, input = {}) {
   const tool = toolCatalog.find(item => item.name === name);
