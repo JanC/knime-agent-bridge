@@ -23,7 +23,7 @@ test('production dispatch/journal harness bounds diagnostics and preserves seria
   assert.equal(jars.length,3);
   const scratch=path.join(root,'build','native-stage-harness-'+randomUUID());
   await fs.mkdir(scratch,{recursive:true});
-  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy'].map(name=>path.join(root,'bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java'));
+  const owned=['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy','ScopePolicy'].map(name=>path.join(root,'bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java'));
   // Before telemetry exists, compile the real baseline without the absent source.
   const available=[];for(const file of owned)try{await fs.access(file);available.push(file);}catch(error){if(error.code!=='ENOENT')throw error;}
   const compilation=spawnSync(javaTool('javac'),['--release','21','-encoding','UTF-8','-cp',jars.join(path.delimiter),'-d',scratch,...available,...await sources(path.join(root,'tests/java/stage-stubs')),path.join(root,'tests/java/StageTelemetryHarness.java')],{encoding:'utf8',windowsHide:true});
@@ -35,5 +35,8 @@ test('production dispatch/journal harness bounds diagnostics and preserves seria
   const gated=spawnSync(javaTool('java'),['-ea','-Dknime.agent.allowWrites=false','-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',path.join(scratch,'write-gate')],{encoding:'utf8',windowsHide:true,timeout:30000});
   assert.equal(gated.status,0,gated.stdout+gated.stderr);
   assert.match(gated.stdout,/write gate verified/);
+  const scoped=spawnSync(javaTool('java'),['-ea','-Dknime.agent.openWorkflowsOnly=true','-Dknime.agent.runtime='+path.join(scratch,'scope-runtime'),'-cp',[scratch,...jars].join(path.delimiter),'org.knime.agent.StageTelemetryHarness',path.join(scratch,'scope-gate')],{encoding:'utf8',windowsHide:true,timeout:30000});
+  assert.equal(scoped.status,0,scoped.stdout+scoped.stderr);
+  assert.match(scoped.stdout,/scope gate verified/);
   // Evidence is intentionally retained; this harness never starts KNIME.
 });

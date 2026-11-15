@@ -171,7 +171,7 @@ export async function launchKnime({ argv = process.argv.slice(2), env = process.
     const log = await fs.open(logPath, 'a');
     let child;
     try {
-      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime, '-Dknime.agent.allowWrites=true', ...extraVmArgs(env)];
+      const launchArgs = ['-clean', '-nosplash', '-consoleLog', '-configuration', config, '-data', workspace, '-vmargs', ...vmArgs, '-Dknime.agent.runtime=' + runtime, '-Dknime.agent.allowWrites=true', '-Dknime.agent.openWorkflowsOnly=false', ...extraVmArgs(env)];
       child = spawnProcess(knimeExecutable(knime, platform), launchArgs, { cwd: knime, detached: true, windowsHide: true, stdio: ['ignore', log.fd, log.fd] });
       await new Promise((resolve, reject) => {
         child.once('error', reject);

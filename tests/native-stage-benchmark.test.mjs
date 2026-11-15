@@ -18,7 +18,7 @@ test('shared synthetic blocked-worker fixture measures baseline and changed heal
   for(const variant of ['baseline','changed']) {
     const scratch=path.join(evidence,variant);await fs.mkdir(scratch,{recursive:true});const sources=[];
     // Baseline = committed HEAD version of each file; a file not yet in HEAD (new or moved) uses the working copy.
-    for(const name of ['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy']) {
+    for(const name of ['BridgeActivator','OperationAccess','AtomicFiles','RequestTelemetry','RuntimeDirectory','WritePolicy','ScopePolicy']) {
       const file='bundles/io.github.juniper234.knime.agentbridge/src/org/knime/agent/'+name+'.java';
       const previous=variant==='baseline'?spawnSync('git',['show','HEAD:'+file],{cwd:root,encoding:'utf8',windowsHide:true}):null;
       if(previous?.status===0){const saved=path.join(scratch,name+'.java');await fs.writeFile(saved,previous.stdout);sources.push(saved);}

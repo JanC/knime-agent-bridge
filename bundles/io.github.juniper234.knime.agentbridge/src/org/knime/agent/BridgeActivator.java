@@ -61,7 +61,7 @@ public final class BridgeActivator implements BundleActivator {
         ObjectNode m=JSON.createObjectNode();
         m.put("id",id);m.put("pid",ProcessHandle.current().pid());m.put("bridgeVersion",version);
         m.put("bundleFingerprint",bundleFingerprint).put("capabilityFingerprint",capabilityFingerprint);
-        m.set("operationPolicies",OperationPolicy.coverage());m.set("writePolicy",writePolicy());m.set("canvasCapabilities",JSON.valueToTree(CanvasAccess.capabilities()));
+        m.set("operationPolicies",OperationPolicy.coverage());m.set("writePolicy",writePolicy());m.set("scopePolicy",ScopePolicy.describe());m.set("canvasCapabilities",JSON.valueToTree(CanvasAccess.capabilities()));
         Bundle core=Platform.getBundle("org.knime.core");
         m.put("knimeVersion",core==null?"unknown":core.getVersion().toString());
         m.put("workspace",Platform.getInstanceLocation().getURL().toString());
@@ -99,6 +99,7 @@ public final class BridgeActivator implements BundleActivator {
             if(!args.isObject())throw new IllegalArgumentException("args must be an object");
             if(!ready&&!safeRead(operation))throw new ContextAccess.Conflict("NATIVE_NOT_READY","Native dependencies are not ready; no operation was dispatched");
             if(OperationPolicy.mutation(operation,args))requireWrites(operation,args);
+            ScopePolicy.require(operation,args,RuntimeDirectory.resolve());
             boolean tracked=!safeRead(operation)&&(OperationPolicy.mutation(operation,args)||operation.equals("canvas.preview")||operation.equals("canvas.viewport"));
             if(tracked) {
                 ObjectNode previous=operations.existing(requestId,request);

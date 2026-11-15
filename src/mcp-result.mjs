@@ -19,7 +19,7 @@ export function structuredResult(value,isError=false) {
   // is a bounded summary, avoiding repeated stale-session/settings/table JSON.
   const summary=isError?{error:{code:value?.error?.code??'UNKNOWN',message:String(value?.error?.message??'Operation failed.').slice(0,600)},
     ...(value?.error?.details?.operationId?{operationId:value.error.details.operationId}:{}),
-    ...(neverDispatched(value?.error)?{nextStep:value?.error?.code==='WRITES_DISABLED'?'Nothing was changed. Tell the user how to allow changes, or continue with read-only tools.':'Nothing was sent to KNIME; it is safe to correct the request and try again.'}
+    ...(neverDispatched(value?.error)?{nextStep:value?.error?.code==='WRITES_DISABLED'?'Nothing was changed. Tell the user how to allow changes, or continue with read-only tools.':value?.error?.code==='SCOPE_RESTRICTED'?'Nothing was changed. This KNIME only lets agents use workflows that are open; ask the user to open the workflow, or continue with the open ones.':'Nothing was sent to KNIME; it is safe to correct the request and try again.'}
       :value?.error?.details?.reconciliation?{nextStep:'Reconcile the original UUID with knime_operation; do not resubmit.'}:{}),detail:'See structuredContent.'}
    :Object.fromEntries(['status','state','completed','sessionId','operationId','evidenceId','tableIdentity','totalRows','rowCount','detailAvailable','detail','nextCall'].filter(k=>Object.hasOwn(structuredContent,k)).map(k=>[k,structuredContent[k]]));
   if(!isError)summary.detailSource='structuredContent';

@@ -220,6 +220,7 @@ export class BridgeClient {
       lifecycle:this.lifecycleDiagnostics?.()??null,tracing:{enabled:!!this.traceDirectory,retainedReferences:this.traceReferences.size,maxEvents:this.traceMaxEvents},
       identity, pinnedIdentity, identityMatches: matches,
       writes:{allowed:this.allowWrites&&selected?.writePolicy?.enabled!==false,client:{enabled:this.allowWrites,source:'KNIME_AGENT_ALLOW_WRITES'},knime:selected?.writePolicy?{enabled:selected.writePolicy.enabled,source:selected.writePolicy.source}:{enabled:null,source:'not published by this bundle'}},
+      scope:selected?.scopePolicy?{openWorkflowsOnly:selected.scopePolicy.openWorkflowsOnly,source:selected.scopePolicy.source,changeAt:selected.scopePolicy.changeAt}:{openWorkflowsOnly:null,source:'not published by this bundle'},
       readiness: { ready: selected?.alive === true, reportedStatus: selected?.reportedStatus ?? null,
         effectiveStatus: selected?.effectiveStatus ?? 'unavailable', processAlive: processAlive(selected?.pid),
         heartbeatFresh: Number.isFinite(age) && Math.abs(age) <= this.staleMs, reason: selected?.reason ?? null },

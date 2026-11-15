@@ -236,3 +236,13 @@ test('client write switch refuses a mutation without queueing a request and stil
   const connection = await client.connectionDiagnostics();
   assert.deepEqual(connection.writes, { allowed: false, client: { enabled: false, source: 'KNIME_AGENT_ALLOW_WRITES' }, knime: { enabled: true, source: 'preference' } });
 });
+
+test('connection diagnostics report the KNIME open-workflows-only scope', async t => {
+  const scopePolicy = { openWorkflowsOnly: true, source: 'preference', changeAt: 'KNIME > Preferences > KNIME > Agent Bridge', blockedOperations: ['desktop.openProject'] };
+  const f = await fixture(t, { overrides: { scopePolicy }, respond: request => ({ id: request.id, ok: true, result: {} }) });
+  const scoped = await new BridgeClient({ runtime: f.runtime, pollMs: 5, timeoutMs: 500 }).connectionDiagnostics();
+  assert.deepEqual(scoped.scope, { openWorkflowsOnly: true, source: 'preference', changeAt: 'KNIME > Preferences > KNIME > Agent Bridge' });
+  const older = await fixture(t, { respond: request => ({ id: request.id, ok: true, result: {} }) });
+  const unknown = await new BridgeClient({ runtime: older.runtime, pollMs: 5, timeoutMs: 500 }).connectionDiagnostics();
+  assert.deepEqual(unknown.scope, { openWorkflowsOnly: null, source: 'not published by this bundle' });
+});

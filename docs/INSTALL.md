@@ -18,7 +18,14 @@ node src/cli.mjs sessions
 
 ## Allowing or blocking changes
 
-**Preferences** > **KNIME** > **Agent Bridge** has one option: "Allow AI agents to modify, execute and save workflows". It is **on** by default. Turn it off to make every connected agent read-only: agents can still see open workflows, settings, tables and the canvas, and any change is refused with `WRITES_DISABLED` before it reaches KNIME. The setting applies immediately, without a restart.
+**Preferences** > **KNIME** > **Agent Bridge** has two options. Both apply immediately, without a restart.
+
+- **Allow AI agents to modify, execute and save workflows** (on by default). Turn it off to make every connected agent read-only: agents can still see open workflows, settings, tables and the canvas, and any change is refused with `WRITES_DISABLED` before it reaches KNIME.
+- **Only allow AI agents to use workflows that are open in KNIME** (on by default). Agents work only with the workflows you have open in a tab. They cannot list, open, create, move, rename or delete anything in your spaces (local workspace or Hub), every gateway call must name an open project, `core.port.export` writes only inside the Agent Bridge runtime folder (`~/.knime-agent/runtime` by default), and `dependency.inspect` path checks only compare against the workflow's own folder. Refusals return `SCOPE_RESTRICTED` and nothing reaches KNIME. Turn it off if you want agents to create and open workflows themselves.
+
+The second option limits what the bridge exposes. It does not limit what a node does when it runs: a File Reader or Python Script node an agent configures can still read any file the KNIME process can read. If that matters, run KNIME as a separate OS user, or in a VM, that can only see the data agents may use.
+
+The developer launcher (`scripts/launch.mjs`) starts its test KNIME with both options overridden (`-Dknime.agent.allowWrites=true -Dknime.agent.openWorkflowsOnly=false`), because the live tests create their own workflows.
 
 ## Connecting Claude Desktop
 

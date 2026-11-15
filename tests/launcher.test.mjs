@@ -150,6 +150,7 @@ test('successful spawn holds the lock until its pid is published, then later lau
     spawnProcess(executable, args, options) {
       assert.equal(executable, path.join(f.knime, 'knime.exe'));
       assert.ok(args.includes('-Dknime.agent.allowWrites=true'));
+      assert.ok(args.includes('-Dknime.agent.openWorkflowsOnly=false'), 'test KNIME creates synthetic workflows through SpaceService');
       assert.equal(args[args.indexOf('-data') + 1], f.workspace);
       assert.equal(options.windowsHide, true);
       pendingChild = new EventEmitter();

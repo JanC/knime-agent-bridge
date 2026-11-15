@@ -31,6 +31,8 @@ class CoreAccess {
 }
 class GatewayAccess {
     static final List<String> SERVICES=List.of();static int initializations;GatewayAccess(){initializations++;}
+    /** Synthetic signatures: WorkflowService methods take projectId first; SpaceService methods take none. */
+    static int parameterIndex(String method,String parameter){return parameter.equals("projectId")&&method.startsWith("WorkflowService.")?0:-1;}
     Object describe(JsonNode a){return Map.of();}Object call(JsonNode a){return Map.of();}
     static class GatewayException extends Exception {final ObjectNode detail=BridgeActivator.JSON.createObjectNode();}
 }
