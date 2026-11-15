@@ -1,5 +1,5 @@
 ; KNIME Agent Bridge per-user Windows installer (x64). Built by scripts/build-installer.mjs:
-;   makensis -DVERSION=0.6.0 -DSTAGE=<build/installer> -DOUTFILE=<exe> -DLICENSE=<LICENSE> installer.nsi
+;   makensis -DVERSION=0.6.0 -DSTAGE=<build/installer> -DOUTFILE=<exe> installer.nsi
 ; The installer only copies files and shows pages. Every change outside its own folder is
 ; made by setup\setup.mjs with the bundled Node, and recorded in install.json for uninstall.
 
@@ -29,7 +29,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "FileDescription" "${PRODUCT} Setup"
 VIAddVersionKey "CompanyName" "KNIME Agent Bridge contributors"
-VIAddVersionKey "LegalCopyright" "GPL-3.0"
+VIAddVersionKey "LegalCopyright" "Copyright (C) 2026 KNIME Agent Bridge contributors"
 
 Var KnimeDir
 
@@ -57,7 +57,6 @@ Var KnimeDir
 !define MUI_WELCOMEPAGE_TITLE "Set up the ${PRODUCT}"
 !define MUI_WELCOMEPAGE_TEXT "This lets AI assistants (Claude Desktop, ChatGPT and Codex) read and edit the workflows open in KNIME on this computer.$\r$\n$\r$\nSetup will:$\r$\n  - add the Agent Bridge extension to KNIME$\r$\n  - connect Codex and the ChatGPT desktop app$\r$\n  - open the Claude Desktop install dialog$\r$\n$\r$\nEverything stays on this computer. Close KNIME before you continue.$\r$\n$\r$\nThis is a community project, not made or supported by KNIME AG."
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "${LICENSE}"
 !insertmacro MUI_PAGE_COMPONENTS
 
 !define MUI_PAGE_CUSTOMFUNCTION_PRE KnimePagePre

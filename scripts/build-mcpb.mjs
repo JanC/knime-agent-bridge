@@ -31,7 +31,6 @@ export async function manifest() {
     author: { name: 'KNIME Agent Bridge contributors' },
     repository: { type: 'git', url: 'https://github.com/juniper234/knime-agent-bridge' },
     homepage: 'https://github.com/juniper234/knime-agent-bridge',
-    license: pkg.license,
     keywords: ['knime', 'workflow', 'data science', 'local'],
     server: {
       type: 'node',
@@ -72,7 +71,7 @@ export async function manifest() {
 export async function stageServer(target) {
   await fs.rm(target, { recursive: true, force: true });
   await fs.mkdir(target, { recursive: true });
-  for (const item of ['package.json', 'package-lock.json', 'LICENSE', 'README.md']) await fs.copyFile(path.join(root, item), path.join(target, item));
+  for (const item of ['package.json', 'package-lock.json', 'README.md']) await fs.copyFile(path.join(root, item), path.join(target, item));
   await fs.cp(path.join(root, 'src'), path.join(target, 'src'), { recursive: true });
   // npm is npm.cmd on Windows, which only runs through a shell. Arguments are fixed strings.
   run('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: target, shell: process.platform === 'win32' });

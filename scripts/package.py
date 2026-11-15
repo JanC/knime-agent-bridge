@@ -13,7 +13,7 @@ if not re.fullmatch(r"org\.knime\.agent\.bridge_" + re.escape(metadata["version"
     raise ValueError("Build a versioned bridge bundle before packaging.")
 
 files = [root / name for name in [
-    "README.md", "AGENTS.md", "LICENSE", "pom.xml", ".gitignore", "Launch KNIME Agent.cmd",
+    "README.md", "AGENTS.md", "pom.xml", ".gitignore", "Launch KNIME Agent.cmd",
     "package.json", "package-lock.json", "artifacts/latest.json",
     "artifacts/" + bundle,
 ]]

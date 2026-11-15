@@ -7,9 +7,6 @@
   <packaging>pom</packaging>
   <name>KNIME Agent Bridge</name>
 
-  <licenses>
-    <license><name>GPL-3.0-only</name><url>https://www.gnu.org/licenses/gpl-3.0.txt</url></license>
-  </licenses>
 
   <properties>
     <tycho.version>5.0.4</tycho.version>

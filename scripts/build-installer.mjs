@@ -91,7 +91,7 @@ async function main() {
   await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
   const output = path.join(root, 'artifacts', `KNIME-Agent-Bridge-Setup-${version}.exe`);
   await fs.rm(output, { force: true });
-  makensis({ VERSION: version, STAGE: stage, OUTFILE: output, LICENSE: path.join(root, 'LICENSE') }, path.join(root, 'installer', 'windows', 'installer.nsi'));
+  makensis({ VERSION: version, STAGE: stage, OUTFILE: output }, path.join(root, 'installer', 'windows', 'installer.nsi'));
   const { size } = await fs.stat(output);
   process.stdout.write(JSON.stringify({ artifact: output, bytes: size, sha256: await sha256(output), node: NODE.version, bundleVersion }) + '\n');
 }

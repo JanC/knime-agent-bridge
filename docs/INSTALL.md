@@ -5,10 +5,9 @@ The bridge ships as a zipped update site, `knime-agent-bridge-update-site-<versi
 ## Install
 
 1. In KNIME, open **Preferences** (top right) > **Install/Update** > **Available Software Sites** > **Add...** > **Archive...**, pick the zip, name it "KNIME Agent Bridge", then **Add** and **Apply and Close**.
-2. Open **Menu** > **Install Extensions...**. Expand **KNIME Agent Bridge (community)**, tick **KNIME Agent Bridge** and click **Next**.
-3. Accept the GPL-3.0 license and click **Finish**.
-4. KNIME warns that the content is unsigned. The extension is not signed (decision D8); choose **Install Anyway** if you trust the zip you built or received.
-5. Restart KNIME when asked.
+2. Open **Menu** > **Install Extensions...**. Expand **KNIME Agent Bridge (community)**, tick **KNIME Agent Bridge**, click **Next**, then **Finish**.
+3. KNIME warns that the content is unsigned. The extension is not signed (decision D8); choose **Install Anyway** if you trust the zip you built or received.
+4. Restart KNIME when asked.
 
 After the restart the bridge runs by itself. It writes its session to `~/.knime-agent/runtime` (Windows: `%USERPROFILE%\.knime-agent\runtime`). Check with:
 
