@@ -73,7 +73,7 @@ The internal packages the bridge uses (`org.knime.gateway.impl.project`, `org.kn
 
 ### Launching for development
 
-`node scripts/launch.mjs` resolves `KNIME_HOME` to `<KNIME app>/Contents/Eclipse` and starts `<KNIME app>/Contents/MacOS/knime` directly (not through `open`), so each launch is a separate process even when another KNIME from the same app is running. The launcher copies every `-vmargs` line from `knime.ini`, which keeps `-XstartOnFirstThread` and the relative `-Xdock:icon`; the working directory is `Contents/Eclipse`, so relative paths resolve.
+`node scripts/launch.mjs` resolves `KNIME_HOME` to `<KNIME app>/Contents/Eclipse` and starts `<KNIME app>/Contents/MacOS/knime` directly (not through `open`), so each launch is a separate process even when another KNIME from the same app is running. The launcher copies every `-vmargs` line from `knime.ini`, which keeps `-XstartOnFirstThread` and the relative `-Xdock:icon`; the working directory is `Contents/Eclipse`, so relative paths resolve. Results are in `VERIFICATION-mac.md`.
 
 ## Windows 11, KNIME 5.12.0
 

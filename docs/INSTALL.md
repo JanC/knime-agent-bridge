@@ -26,6 +26,18 @@ The second option limits what the bridge exposes. It does not limit what a node 
 
 The developer launcher (`scripts/launch.mjs`) starts its test KNIME with both options overridden (`-Dknime.agent.allowWrites=true -Dknime.agent.openWorkflowsOnly=false`), because the live tests create their own workflows.
 
+## Connecting Claude Desktop
+
+Build the bundle with `npm run build:mcpb` (output: `artifacts/knime-agent-bridge-<version>.mcpb`, about 6 MB). Double-click it, or drag it onto Claude Desktop's **Settings > Extensions** page, and click **Install**. Claude Desktop runs it with its own built-in Node.js; nothing else needs installing.
+
+The extension has three settings:
+
+- **Allow changes** (on): turn off to keep Claude read-only. KNIME's own switch (below) must also allow changes.
+- **Canvas images** (off): lets Claude render pictures of the workflow. Needs Google Chrome or Microsoft Edge.
+- **Browser for canvas images** (empty): a Chrome, Edge or Chromium executable if neither is found automatically.
+
+KNIME must be running with the extension installed; otherwise the tools report that no KNIME session is available.
+
 ## Connecting Claude Code or Codex
 
 From a checkout of this repository:

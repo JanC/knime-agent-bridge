@@ -1,5 +1,6 @@
 // Registers this checkout's MCP server with Claude Code for the current user.
 //   node scripts/register-claude-code.mjs [--read-only] [--name knime]
+// Claude Desktop users install artifacts/knime-agent-bridge-<version>.mcpb instead.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';

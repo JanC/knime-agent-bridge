@@ -14,11 +14,16 @@
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "test:adapter": "node --test tests/client.test.mjs tests/mcp.test.mjs tests/launcher.test.mjs tests/launcher-modern.test.mjs",
     "test:beta": "node scripts/verify-beta.mjs",
-    "mcp": "node src/server.mjs"
+    "mcp": "node src/server.mjs",
+    "build:mcpb": "node scripts/build-mcpb.mjs",
+    "build:installer": "node scripts/build-installer.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
     "playwright-core": "1.63.0",
     "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2"
   }
 }

@@ -12,4 +12,6 @@ artifacts/*.sha256
 target/
 # The Tycho target definition lives in releng/target and must be committed.
 !releng/target/
+artifacts/*.mcpb
 .DS_Store
+artifacts/*.exe
