@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { directorArgs, elevatedCommand, installedBundle, isKnimeHome, knimeExecutable, knimeVersion, removeServerBlock, serverBlock, tomlString, updateCodexConfig, FEATURE_IU } from '../installer/windows/setup.mjs';
+import { directorArgs, elevatedCommand, installedBundle, isKnimeHome, knimeExecutable, knimeVersion, nodeUsers, parseNodeUsers, removeServerBlock, serverBlock, tomlString, updateCodexConfig, FEATURE_IU } from '../installer/windows/setup.mjs';
 
 const existing = `model = "gpt-5"
 
@@ -68,4 +68,22 @@ test('elevated command quotes PowerShell and process arguments', () => {
   assert.match(command, /-FilePath 'C:\\Program Files\\KNIME\\knime\.exe'/);
   assert.match(command, /-ArgumentList '"-data" "C:\\Users\\O''Brien\\tmp"'/);
   assert.match(command, /-Verb RunAs -Wait -PassThru; exit \$p\.ExitCode$/);
+});
+
+test('node-in-use matches only the bundled node.exe and skips itself', () => {
+  const exe = 'C:\\Users\\Jane Doe\\AppData\\Local\\KnimeAgentBridge\\node\\node.exe';
+  const listing = [
+    '4100|codex|C:\\Users\\Jane Doe\\AppData\\Local\\KnimeAgentBridge\\node\\node.exe',
+    '4200|ChatGPT|c:\\users\\jane doe\\appdata\\local\\knimeagentbridge\\node\\NODE.EXE',
+    '4300|Code|C:\\Program Files\\nodejs\\node.exe',
+    '4400||C:\\Users\\Jane Doe\\AppData\\Local\\KnimeAgentBridge\\node\\node.exe',
+    '4500|explorer|',
+    'garbage'].join('\r\n');
+  assert.deepEqual(parseNodeUsers(listing, exe, 4400).map(u => [u.pid, u.parent]), [[4100, 'codex'], [4200, 'ChatGPT']]);
+  assert.deepEqual(parseNodeUsers(listing, exe, 1).find(u => u.pid === 4400).parent, 'unknown program');
+  assert.deepEqual(nodeUsers(exe, { platform: 'darwin', run: () => { throw new Error('not called'); } }), []);
+  const calls = [];
+  nodeUsers(exe, { platform: 'win32', run: (cmd, args) => { calls.push([cmd, args.at(-1)]); return { stdout: '' }; } });
+  assert.equal(calls[0][0], 'powershell.exe');
+  assert.match(Buffer.from(calls[0][1], 'base64').toString('utf16le'), /Name='node\.exe'/);
 });

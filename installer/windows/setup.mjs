@@ -13,6 +13,7 @@
 //   install --knime DIR [--extension] [--codex] [--claude]
 //   check [--start] [--pause]    wait for a live KNIME session and read its health
 //   uninstall                    undo what install.json records
+//   node-in-use [--stop]         exit 3 while other programs run this install's node.exe
 //
 // The functions are exported so the logic is tested on any OS.
 import fs from 'node:fs';
@@ -197,6 +198,37 @@ function openClaudeExtension({ payload, manifest }) {
   return { opened: true };
 }
 
+// ---------- programs using the bundled node.exe ----------
+
+// Codex and the ChatGPT app start the MCP server with node\node.exe, and an open connection check
+// window keeps it running too. Windows cannot replace or delete node.exe while any of them runs.
+const NODE_USERS_PS = 'Get-CimInstance Win32_Process -Filter "Name=\'node.exe\'" | ForEach-Object { '
+  + '$parent = (Get-Process -Id $_.ParentProcessId -ErrorAction SilentlyContinue).ProcessName; '
+  + '"$($_.ProcessId)|$parent|$($_.ExecutablePath)" }';
+
+/** Lines "pid|parent name|executable path" to the processes that run exe, other than self. */
+export function parseNodeUsers(stdout, exe, self = process.pid) {
+  const target = path.win32.normalize(exe).toLowerCase();
+  return String(stdout ?? '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+    const [pid, parent, ...rest] = line.split('|');
+    return { pid: Number(pid), parent: parent || 'unknown program', path: rest.join('|') };
+  }).filter(p => Number.isSafeInteger(p.pid) && p.pid !== self && p.path && path.win32.normalize(p.path).toLowerCase() === target);
+}
+
+export function nodeUsers(exe, { platform = process.platform, run = spawnSync } = {}) {
+  if (platform !== 'win32') return [];
+  // -EncodedCommand (UTF-16LE base64) avoids Windows command-line quoting of the inner quotes.
+  const r = run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(NODE_USERS_PS, 'utf16le').toString('base64')], { encoding: 'utf8', windowsHide: true });
+  return parseNodeUsers(r.stdout, exe);
+}
+
+function stopProcesses(users, run = spawnSync) {
+  for (const user of users) {
+    const r = run('taskkill', ['/PID', String(user.pid), '/F'], { encoding: 'utf8', windowsHide: true });
+    say(r.status === 0 ? `Stopped process ${user.pid} (started by ${user.parent}).` : `Could not stop process ${user.pid}: ${(r.stderr || r.stdout || '').trim()}`);
+  }
+}
+
 // ---------- check ----------
 
 async function check({ root, knime, start, timeoutMs = 180000 }) {
@@ -237,6 +269,14 @@ async function main() {
   const state = fs.existsSync(record) ? JSON.parse(fs.readFileSync(record, 'utf8')) : {};
   const save = () => fs.writeFileSync(record, JSON.stringify(state, null, 2) + '\n');
   if (command === 'knime-running') { process.exitCode = knimeRunning() ? 2 : 0; return; }
+  if (command === 'node-in-use') {
+    const exe = path.join(root, 'node', 'node.exe');
+    let users = nodeUsers(exe);
+    if (users.length && options.stop) { stopProcesses(users); await new Promise(r => setTimeout(r, 1000)); users = nodeUsers(exe); }
+    for (const user of users) say(`Still in use: process ${user.pid}, started by ${user.parent}.`);
+    process.exitCode = users.length ? 3 : 0;
+    return;
+  }
   if (command === 'install') {
     const manifest = JSON.parse(fs.readFileSync(path.join(payload, 'manifest.json'), 'utf8'));
     let failed = false;
@@ -272,7 +312,7 @@ async function main() {
     if (state.claude) say('To remove it from Claude Desktop: Settings > Extensions > KNIME Agent Bridge > Uninstall.');
     return;
   }
-  say('Unknown command. Use knime-running, install, check or uninstall.');
+  say('Unknown command. Use knime-running, node-in-use, install, check or uninstall.');
   process.exitCode = 64;
 }
 

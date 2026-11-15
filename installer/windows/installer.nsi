@@ -33,6 +33,26 @@ VIAddVersionKey "LegalCopyright" "GPL-3.0"
 
 Var KnimeDir
 
+; Codex and the ChatGPT app run the MCP server with node\node.exe; Windows cannot replace or
+; delete it while they do. SETUP is the setup.mjs to run with the installed node.exe.
+!macro EnsureNodeFree SETUP
+  ${If} ${FileExists} "$INSTDIR\node\node.exe"
+    nodecheck:
+    nsExec::ExecToLog '"$INSTDIR\node\node.exe" "${SETUP}" node-in-use --root "$INSTDIR"'
+    Pop $0
+    ${If} $0 == 3
+      MessageBox MB_ABORTRETRYIGNORE|MB_ICONEXCLAMATION "The KNIME Agent Bridge is still in use, so its files cannot be replaced or removed. The programs using it are listed in the log.$\r$\n$\r$\nClose Codex and the ChatGPT app, and any open connection check window, then click Retry.$\r$\n$\r$\nClick Ignore to stop those processes now. Their KNIME connection ends until you restart them." IDRETRY nodecheck IDIGNORE nodestop
+      Abort
+      nodestop:
+      nsExec::ExecToLog '"$INSTDIR\node\node.exe" "${SETUP}" node-in-use --stop --root "$INSTDIR"'
+      Pop $0
+      ${If} $0 == 3
+        Goto nodecheck
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+!macroend
+
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Set up the ${PRODUCT}"
 !define MUI_WELCOMEPAGE_TEXT "This lets AI assistants (Claude Desktop, ChatGPT and Codex) read and edit the workflows open in KNIME on this computer.$\r$\n$\r$\nSetup will:$\r$\n  - add the Agent Bridge extension to KNIME$\r$\n  - connect Codex and the ChatGPT desktop app$\r$\n  - open the Claude Desktop install dialog$\r$\n$\r$\nEverything stays on this computer. Close KNIME before you continue.$\r$\n$\r$\nThis is a community project, not made or supported by KNIME AG."
@@ -63,6 +83,13 @@ Var KnimeDir
 !insertmacro MUI_LANGUAGE "English"
 
 Section "-Files" SecFiles
+  ; An earlier install's node.exe runs this version's check, copied out first.
+  ${If} ${FileExists} "$INSTDIR\node\node.exe"
+    InitPluginsDir
+    SetOutPath "$PLUGINSDIR"
+    File "${STAGE}/setup/setup.mjs"
+    !insertmacro EnsureNodeFree "$PLUGINSDIR\setup.mjs"
+  ${EndIf}
   SetOutPath "$INSTDIR"
   ; Replace the server and setup wholesale so no stale files survive an upgrade.
   RMDir /r "$INSTDIR\server"
@@ -171,6 +198,7 @@ Section "Uninstall"
     MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "KNIME is running. Save your work, close KNIME, then click Retry." IDRETRY retry
     Abort
   ${EndIf}
+  !insertmacro EnsureNodeFree "$INSTDIR\setup\setup.mjs"
   nsExec::ExecToLog '${NODE} ${SETUP} uninstall'
   Pop $0
   RMDir /r "$INSTDIR\node"
@@ -180,6 +208,9 @@ Section "Uninstall"
   Delete "$INSTDIR\install.json"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
+  ${If} ${FileExists} "$INSTDIR\*.*"
+    MessageBox MB_ICONEXCLAMATION "Some files in $INSTDIR are still in use and were left there. Delete that folder after closing the programs that use it."
+  ${EndIf}
   RMDir /r "$SMPROGRAMS\${PRODUCT}"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"
 SectionEnd
